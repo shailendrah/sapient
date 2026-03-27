@@ -31,6 +31,7 @@ const BUILTIN_CHANNEL_IDS = [
   "webchat",
   "bluebubbles",
   "google-chat",
+  "twitter",
 ];
 
 /**

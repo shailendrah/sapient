@@ -113,9 +113,11 @@ program
           gateway.broadcastToSession(sessionKey, event);
 
           // Send reply back through the channel
+          // For Twitter, reply to the tweet ID; for others, reply to the sender
           if (event.type === "text.done" && event.data.type === "text.done") {
+            const replyTo = msg.channelId === "twitter" ? msg.id : msg.from;
             channels
-              .sendReply(msg.channelId, msg.accountId ?? "default", msg.from, {
+              .sendReply(msg.channelId, msg.accountId ?? "default", replyTo, {
                 text: event.data.text,
               })
               .catch((err) =>
