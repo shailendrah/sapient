@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sapient</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; background: #0d1117; color: #c9d1d9; height: 100vh; display: flex; flex-direction: column; }
+    header { background: #161b22; border-bottom: 1px solid #30363d; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 16px; font-weight: 600; }
+    .status { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #238636; color: #fff; }
+    .status.disconnected { background: #da3633; }
+    .main { display: flex; flex: 1; overflow: hidden; }
+    .sidebar { width: 260px; background: #161b22; border-right: 1px solid #30363d; padding: 12px; overflow-y: auto; }
+    .sidebar h3 { font-size: 12px; text-transform: uppercase; color: #8b949e; margin-bottom: 8px; letter-spacing: 0.5px; }
+    .sidebar-section { margin-bottom: 20px; }
+    .channel-item, .session-item { padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-bottom: 2px; }
+    .channel-item:hover, .session-item:hover { background: #21262d; }
+    .channel-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .channel-status.running { background: #238636; }
+    .channel-status.stopped { background: #8b949e; }
+    .channel-status.error { background: #da3633; }
+    .chat { flex: 1; display: flex; flex-direction: column; }
+    .messages { flex: 1; overflow-y: auto; padding: 16px 20px; }
+    .msg { margin-bottom: 12px; max-width: 80%; }
+    .msg.user { margin-left: auto; }
+    .msg .bubble { padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+    .msg.user .bubble { background: #1f6feb; color: #fff; border-bottom-right-radius: 4px; }
+    .msg.assistant .bubble { background: #21262d; border-bottom-left-radius: 4px; }
+    .msg.system .bubble { background: transparent; color: #8b949e; font-size: 12px; text-align: center; max-width: 100%; }
+    .msg .meta { font-size: 11px; color: #8b949e; margin-top: 2px; padding: 0 4px; }
+    .msg.user .meta { text-align: right; }
+    .input-area { border-top: 1px solid #30363d; padding: 12px 20px; display: flex; gap: 8px; }
+    .input-area input { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; color: #c9d1d9; font-size: 14px; outline: none; }
+    .input-area input:focus { border-color: #1f6feb; }
+    .input-area button { background: #1f6feb; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .input-area button:hover { background: #388bfd; }
+    .input-area button:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+    .tool-event { font-size: 12px; color: #8b949e; padding: 4px 0; border-left: 2px solid #30363d; padding-left: 8px; margin: 4px 0; }
+    /* Login overlay */
+    .login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .login-overlay.hidden { display: none; }
+    .login-box { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 32px; width: 380px; }
+    .login-box h2 { font-size: 18px; margin-bottom: 8px; }
+    .login-box p { font-size: 13px; color: #8b949e; margin-bottom: 16px; }
+    .login-box input { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; color: #c9d1d9; font-size: 14px; font-family: monospace; outline: none; margin-bottom: 12px; }
+    .login-box input:focus { border-color: #1f6feb; }
+    .login-box button { width: 100%; background: #1f6feb; color: #fff; border: none; border-radius: 8px; padding: 10px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .login-box button:hover { background: #388bfd; }
+    .login-error { color: #da3633; font-size: 13px; margin-bottom: 12px; display: none; }
+    .pairing-banner { background: #161b22; border: 1px solid #d29922; border-radius: 8px; padding: 16px 20px; margin: 16px 20px; text-align: center; }
+    .pairing-banner h3 { color: #d29922; font-size: 14px; margin-bottom: 6px; }
+    .pairing-banner p { font-size: 13px; color: #8b949e; margin-bottom: 4px; }
+    .pairing-banner code { background: #0d1117; padding: 4px 8px; border-radius: 4px; font-size: 13px; color: #58a6ff; user-select: all; }
+    .pairing-banner.paired { border-color: #238636; }
+    .pairing-banner.paired h3 { color: #238636; }
+    /* Workspace editor modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 50; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: #161b22; border: 1px solid #30363d; border-radius: 12px; width: 700px; max-height: 80vh; display: flex; flex-direction: column; }
+    .modal-header { padding: 16px 20px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 12px; }
+    .modal-header h2 { font-size: 16px; flex: 1; }
+    .modal-header button { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 18px; }
+    .modal-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+    .modal-footer { padding: 12px 20px; border-top: 1px solid #30363d; display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-footer button { padding: 8px 16px; border-radius: 6px; border: 1px solid #30363d; background: #21262d; color: #c9d1d9; cursor: pointer; font-size: 13px; }
+    .modal-footer button.primary { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+    .ws-file-list { list-style: none; }
+    .ws-file-item { padding: 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 2px; font-size: 13px; }
+    .ws-file-item:hover { background: #21262d; }
+    .ws-file-item .exists { color: #238636; }
+    .ws-file-item .missing { color: #8b949e; }
+    .ws-editor { width: 100%; min-height: 300px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px; color: #c9d1d9; font-family: monospace; font-size: 13px; line-height: 1.5; resize: vertical; outline: none; }
+    .ws-editor:focus { border-color: #1f6feb; }
+    .ws-save-note { font-size: 12px; color: #8b949e; }
+    /* Subagent display */
+    .subagent-event { font-size: 12px; color: #58a6ff; padding: 4px 0; border-left: 2px solid #1f6feb; padding-left: 8px; margin: 4px 0; }
+    .subagent-event.complete { color: #238636; border-color: #238636; }
+    .subagent-event.error { color: #da3633; border-color: #da3633; }
+  </style>
+</head>
+<body>
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-box">
+      <h2>Sapient</h2>
+      <p>Enter the gateway token to connect. The token is shown in the terminal when the server starts.</p>
+      <div id="loginError" class="login-error"></div>
+      <input id="tokenInput" type="password" placeholder="Paste gateway token..." autocomplete="off" autofocus />
+      <button id="loginBtn">Connect</button>
+    </div>
+  </div>
+  <header>
+    <h1>Sapient</h1>
+    <span id="connStatus" class="status disconnected">Disconnected</span>
+    <span style="flex:1"></span>
+    <span style="font-size:12px;color:#8b949e" id="serverInfo"></span>
+  </header>
+  <div class="main">
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <h3>Channels</h3>
+        <div id="channelsList"></div>
+      </div>
+      <div class="sidebar-section">
+        <h3>Sessions</h3>
+        <div id="sessionsList"></div>
+      </div>
+      <div class="sidebar-section">
+        <h3>Workspace</h3>
+        <div id="workspaceList" style="font-size:12px;color:#8b949e">No workspace</div>
+      </div>
+      <div class="sidebar-section">
+        <h3>Config</h3>
+        <div id="configInfo" style="font-size:12px;color:#8b949e"></div>
+      </div>
+    </div>
+    <!-- Workspace Editor Modal -->
+    <div id="wsModal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 id="wsModalTitle">Edit Workspace File</h2>
+          <button id="wsModalClose">&times;</button>
+        </div>
+        <div class="modal-body">
+          <textarea id="wsEditor" class="ws-editor" spellcheck="false"></textarea>
+        </div>
+        <div class="modal-footer">
+          <span class="ws-save-note">Changes take effect on next agent run</span>
+          <span style="flex:1"></span>
+          <button id="wsModalCancel">Cancel</button>
+          <button id="wsModalSave" class="primary">Save</button>
+        </div>
+      </div>
+    </div>
+    <div class="chat">
+      <div class="messages" id="messages"></div>
+      <div class="input-area">
+        <input id="msgInput" type="text" placeholder="Send a message..." autocomplete="off" disabled />
+        <button id="sendBtn" disabled>Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PORT = location.port || '18789';
+    const HOST = location.hostname || '127.0.0.1';
+
+    let ws = null;
+    let reqId = 0;
+    let currentRunId = null;
+    let currentText = '';
+    let authToken = sessionStorage.getItem('sapient_token') || '';
+    let devicePaired = false;
+    let deviceName = '';
+    let pairingPollTimer = null;
+    const pendingResponses = new Map();
+
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('msgInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const connStatus = document.getElementById('connStatus');
+    const serverInfo = document.getElementById('serverInfo');
+    const channelsList = document.getElementById('channelsList');
+    const sessionsList = document.getElementById('sessionsList');
+    const configInfo = document.getElementById('configInfo');
+    const workspaceList = document.getElementById('workspaceList');
+    const wsModal = document.getElementById('wsModal');
+    const wsModalTitle = document.getElementById('wsModalTitle');
+    const wsEditor = document.getElementById('wsEditor');
+    const wsModalClose = document.getElementById('wsModalClose');
+    const wsModalCancel = document.getElementById('wsModalCancel');
+    const wsModalSave = document.getElementById('wsModalSave');
+    let currentWsFile = null;
+    const loginOverlay = document.getElementById('loginOverlay');
+    const tokenInput = document.getElementById('tokenInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+
+    // Also check URL param: ?token=...
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.has('token')) {
+      authToken = urlParams.get('token');
+      sessionStorage.setItem('sapient_token', authToken);
+      // Clean URL
+      history.replaceState(null, '', location.pathname);
+    }
+
+    // Login handlers
+    loginBtn.addEventListener('click', tryLogin);
+    tokenInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') tryLogin();
+    });
+
+    function tryLogin() {
+      const token = tokenInput.value.trim();
+      if (!token) return;
+      authToken = token;
+      sessionStorage.setItem('sapient_token', token);
+      loginError.style.display = 'none';
+      loginOverlay.classList.add('hidden');
+      connect();
+    }
+
+    function showLogin(errorMsg) {
+      loginOverlay.classList.remove('hidden');
+      if (errorMsg) {
+        loginError.textContent = errorMsg;
+        loginError.style.display = 'block';
+      }
+      tokenInput.value = '';
+      tokenInput.focus();
+    }
+
+    function send(method, params) {
+      const id = `ui_${++reqId}`;
+      ws.send(JSON.stringify({ type: 'req', id, method, params }));
+      return new Promise((resolve) => pendingResponses.set(id, resolve));
+    }
+
+    function addMessage(role, text, meta) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      div.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>${meta ? `<div class="meta">${escapeHtml(meta)}</div>` : ''}`;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return div;
+    }
+
+    function addToolEvent(text) {
+      const div = document.createElement('div');
+      div.className = 'tool-event';
+      div.textContent = text;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    let assistantBubble = null;
+
+    function connect() {
+      const wsUrl = `ws://${HOST}:${PORT}${authToken ? '?token=' + encodeURIComponent(authToken) : ''}`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {};
+
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+
+        if (msg.type === 'hello-ok') {
+          connStatus.textContent = 'Connected';
+          connStatus.className = 'status';
+          serverInfo.textContent = `v${msg.server.version}`;
+          devicePaired = msg.paired !== false;
+          deviceName = msg.deviceName || '';
+
+          if (devicePaired) {
+            inputEl.disabled = false;
+            sendBtn.disabled = false;
+            addMessage('system', 'Connected to Sapient gateway');
+          } else {
+            inputEl.disabled = true;
+            sendBtn.disabled = true;
+            showPairingBanner();
+            startPairingPoll();
+          }
+          refreshSidebar();
+          return;
+        }
+
+        if (msg.type === 'res') {
+          const resolve = pendingResponses.get(msg.id);
+          if (resolve) {
+            pendingResponses.delete(msg.id);
+            resolve(msg);
+          }
+          return;
+        }
+
+        if (msg.type === 'event') {
+          handleStreamEvent(msg.payload);
+        }
+      };
+
+      ws.onclose = (e) => {
+        connStatus.textContent = 'Disconnected';
+        connStatus.className = 'status disconnected';
+        inputEl.disabled = true;
+        sendBtn.disabled = true;
+
+        // If closed without ever connecting (auth failure), show login
+        if (e.code === 1006 && !serverInfo.textContent) {
+          sessionStorage.removeItem('sapient_token');
+          showLogin('Authentication failed. Check your token.');
+          return;
+        }
+
+        // Otherwise reconnect
+        setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => {};
+    }
+
+    function handleStreamEvent(event) {
+      if (!event) return;
+      const data = event.data;
+      if (!data) return;
+
+      switch (data.type) {
+        case 'agent.start':
+          currentText = '';
+          assistantBubble = null;
+          break;
+
+        case 'text.delta':
+          currentText += data.text;
+          if (!assistantBubble) {
+            assistantBubble = addMessage('assistant', currentText);
+          } else {
+            assistantBubble.querySelector('.bubble').textContent = currentText;
+          }
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+          break;
+
+        case 'text.done':
+          currentText = data.text;
+          if (assistantBubble) {
+            assistantBubble.querySelector('.bubble').textContent = currentText;
+          } else {
+            addMessage('assistant', currentText);
+          }
+          assistantBubble = null;
+          break;
+
+        case 'tool.use':
+          addToolEvent(`Tool: ${data.toolName}(${JSON.stringify(data.input).slice(0, 100)})`);
+          break;
+
+        case 'tool.result':
+          addToolEvent(`Result: ${JSON.stringify(data.output).slice(0, 200)}`);
+          break;
+
+        case 'subagent.start': {
+          const div = document.createElement('div');
+          div.className = 'subagent-event';
+          div.textContent = `▶ Subagent started: ${data.name}${data.description ? ' — ' + data.description : ''}`;
+          messagesEl.appendChild(div);
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+          break;
+        }
+
+        case 'subagent.complete': {
+          const r = data.result || {};
+          const div = document.createElement('div');
+          div.className = `subagent-event ${r.status === 'completed' ? 'complete' : r.status === 'failed' ? 'error' : ''}`;
+          const stats = r.durationMs ? ` (${(r.durationMs/1000).toFixed(1)}s, ${r.toolUses ?? 0} tools, ${r.tokens ?? 0} tokens)` : '';
+          div.textContent = `${r.status === 'completed' ? '✓' : '✗'} Subagent ${r.status ?? 'done'}${r.summary ? ': ' + r.summary : ''}${stats}`;
+          messagesEl.appendChild(div);
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+          break;
+        }
+
+        case 'approval.request':
+          addToolEvent(`Approval needed: ${data.toolName} — ${data.prompt}`);
+          break;
+
+        case 'agent.error':
+          addMessage('system', `Error: ${data.error}`);
+          break;
+
+        case 'agent.complete':
+          refreshSidebar();
+          break;
+      }
+    }
+
+    async function refreshSidebar() {
+      // Channels
+      const chRes = await send('channels.list');
+      if (chRes.ok) {
+        channelsList.innerHTML = chRes.payload.channels.map(ch =>
+          `<div class="channel-item"><span class="channel-status ${ch.status}"></span>${ch.label}</div>`
+        ).join('') || '<div style="font-size:12px;color:#8b949e">No channels configured</div>';
+      }
+
+      // Sessions
+      const sessRes = await send('sessions.list');
+      if (sessRes.ok) {
+        sessionsList.innerHTML = sessRes.payload.sessions.map(s =>
+          `<div class="session-item">${s.key} <span style="color:#8b949e">(${s.status})</span></div>`
+        ).join('') || '<div style="font-size:12px;color:#8b949e">No sessions</div>';
+      }
+
+      // Workspace
+      const wsRes = await send('workspace.list');
+      if (wsRes.ok && wsRes.payload.dir) {
+        const items = wsRes.payload.files.map(f =>
+          `<div class="ws-file-item" onclick="openWsFile('${f.name}')">
+            <span class="${f.exists ? 'exists' : 'missing'}">${f.exists ? '●' : '○'}</span>
+            ${f.name}
+          </div>`
+        ).join('');
+        const skillItems = (wsRes.payload.skills || []).map(s =>
+          `<div class="ws-file-item" style="padding-left:16px;color:#8b949e">
+            <span class="exists">●</span> skills/${s}
+          </div>`
+        ).join('');
+        workspaceList.innerHTML = items + skillItems;
+      }
+
+      // Config
+      const cfgRes = await send('config.get');
+      if (cfgRes.ok) {
+        const cfg = cfgRes.payload.config;
+        configInfo.innerHTML = `Model: ${cfg?.agent?.model ?? 'default'}<br>Port: ${cfg?.gateway?.port ?? 18789}`;
+      }
+    }
+
+    // Workspace editor
+    async function openWsFile(name) {
+      currentWsFile = name;
+      wsModalTitle.textContent = name;
+      const res = await send('workspace.read', { name });
+      if (res.ok) {
+        wsEditor.value = res.payload.content || '';
+        wsModal.classList.remove('hidden');
+        wsEditor.focus();
+      }
+    }
+
+    async function saveWsFile() {
+      if (!currentWsFile) return;
+      const res = await send('workspace.write', { name: currentWsFile, content: wsEditor.value });
+      if (res.ok) {
+        wsModal.classList.add('hidden');
+        addMessage('system', `Saved ${currentWsFile} — changes take effect on next agent run`);
+        refreshSidebar();
+      } else {
+        alert('Save failed: ' + (res.payload?.error || res.error?.message));
+      }
+    }
+
+    wsModalClose.addEventListener('click', () => wsModal.classList.add('hidden'));
+    wsModalCancel.addEventListener('click', () => wsModal.classList.add('hidden'));
+    wsModalSave.addEventListener('click', saveWsFile);
+    wsEditor.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); saveWsFile(); }
+      if (e.key === 'Escape') wsModal.classList.add('hidden');
+    });
+
+    function showPairingBanner() {
+      // Remove any existing banner
+      const old = document.getElementById('pairingBanner');
+      if (old) old.remove();
+
+      const banner = document.createElement('div');
+      banner.id = 'pairingBanner';
+      banner.className = 'pairing-banner';
+      banner.innerHTML = `
+        <h3>Device Not Paired</h3>
+        <p>This device needs to be approved before you can chat.</p>
+        <p>Ask the admin to run:</p>
+        <p><code>make pair_sapient DEVICE=${escapeHtml(deviceName)}</code></p>
+        <p style="margin-top:8px;font-size:12px;color:#8b949e">Waiting for approval...</p>
+      `;
+      messagesEl.appendChild(banner);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function showPairedBanner() {
+      const old = document.getElementById('pairingBanner');
+      if (old) old.remove();
+
+      const banner = document.createElement('div');
+      banner.id = 'pairingBanner';
+      banner.className = 'pairing-banner paired';
+      banner.innerHTML = `<h3>Device Paired</h3><p>You can now start chatting.</p>`;
+      messagesEl.appendChild(banner);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      // Remove after a few seconds
+      setTimeout(() => banner.remove(), 4000);
+    }
+
+    function startPairingPoll() {
+      if (pairingPollTimer) clearInterval(pairingPollTimer);
+      pairingPollTimer = setInterval(async () => {
+        try {
+          const res = await send('device.status');
+          if (res.ok && res.payload?.paired) {
+            clearInterval(pairingPollTimer);
+            pairingPollTimer = null;
+            devicePaired = true;
+            inputEl.disabled = false;
+            sendBtn.disabled = false;
+            showPairedBanner();
+            inputEl.focus();
+          }
+        } catch {}
+      }, 3000);
+    }
+
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      inputEl.value = '';
+      addMessage('user', text, new Date().toLocaleTimeString());
+
+      const res = await send('chat.send', { sessionKey: 'main', message: text });
+      if (!res.ok) {
+        if (res.payload?.error === 'DEVICE_NOT_PAIRED') {
+          addMessage('system', `Device not paired. Ask admin to run: make pair_sapient DEVICE=${res.payload.deviceName}`);
+        } else {
+          addMessage('system', `Error: ${res.error?.message ?? 'Unknown error'}`);
+        }
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // If we have a stored token, try connecting; otherwise show login
+    if (authToken) {
+      loginOverlay.classList.add('hidden');
+      connect();
+    } else {
+      showLogin();
+    }
+  </script>
+</body>
+</html>

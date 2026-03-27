@@ -1,0 +1,33 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Compiled JS output (source is .ts)
+frontend/extensions/**/*.js
+frontend/extensions/**/*.js.map
+frontend/extensions/**/*.d.ts.map
+
+# State and secrets
+.sapient/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.*
+
+# Docker
+sapient-state/
+
+# Scratch files
+x.err
+x.out

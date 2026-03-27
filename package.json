@@ -1,0 +1,17 @@
+{
+  "name": "sapient",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-channel AI agent platform — OpenClaw channels + Claude Agent SDK backend",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "clean": "pnpm -r clean",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint"
+  }
+}
