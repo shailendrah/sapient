@@ -45,6 +45,42 @@ export interface AgentConfig {
   toolsDir?: string;
   /** Workspace directory for AGENTS.md, SOUL.md, etc. */
   workspaceDir?: string;
+  /**
+   * MCP server configurations. Keys are server names.
+   * Supports stdio, HTTP, and SSE transports.
+   *
+   * @example
+   * {
+   *   "my-tools": { command: "node", args: ["./mcp-server.js"] },
+   *   "remote":   { type: "http", url: "https://mcp.example.com/mcp" }
+   * }
+   */
+  mcpServers?: Record<string, McpServerSpec>;
+}
+
+/** MCP server configuration — stdio (default), HTTP, or SSE transport. */
+export type McpServerSpec =
+  | McpStdioSpec
+  | McpHttpSpec
+  | McpSseSpec;
+
+export interface McpStdioSpec {
+  type?: "stdio";
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+export interface McpHttpSpec {
+  type: "http";
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export interface McpSseSpec {
+  type: "sse";
+  url: string;
+  headers?: Record<string, string>;
 }
 
 export interface SubagentConfig {

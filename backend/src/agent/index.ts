@@ -100,6 +100,7 @@ export async function runAgent(
         allowDangerouslySkipPermissions:
           config.permissionMode === "bypassPermissions" ? true : undefined,
         agents: Object.keys(agents).length > 0 ? agents : undefined,
+        mcpServers: config.mcpServers,
         abortController,
 
         // Human-in-the-loop: intercept tool approvals
