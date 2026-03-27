@@ -106,6 +106,7 @@ program
       abortControllers.set(msg.id, ac);
 
       const result = await runAgent(msg, sessionKey, {
+        runId: msg.id,
         config: agentConfig,
         abortController: ac,
         onStreamEvent(event) {
