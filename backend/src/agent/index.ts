@@ -29,6 +29,8 @@ export interface AgentOptions {
   onApprovalRequest?: OnApprovalRequest;
   /** Abort controller to cancel the agent run. */
   abortController?: AbortController;
+  /** Canonical run ID. If omitted, one is generated. */
+  runId?: string;
 }
 
 /** Result of an agent run. */
@@ -65,8 +67,8 @@ export async function runAgent(
   sessionKey: string,
   options: AgentOptions,
 ): Promise<AgentRunResult> {
-  const runId = `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const { config, onStreamEvent, onApprovalRequest, abortController } = options;
+  const runId = options.runId ?? `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   onStreamEvent(
     makeEvent("agent.start", runId, sessionKey, { type: "agent.start" }),

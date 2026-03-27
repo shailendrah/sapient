@@ -76,12 +76,17 @@ export async function startChannels(
   registry: ChannelRegistry,
   channelsConfig: Record<string, unknown>,
 ): Promise<void> {
+  const defaults = (channelsConfig.defaults ?? {}) as Record<string, unknown>;
+
   for (const channel of registry.list()) {
-    const config = channelsConfig[channel.plugin.id];
-    if (!config || typeof config !== "object") continue;
+    const perChannel = channelsConfig[channel.plugin.id];
+    if (!perChannel || typeof perChannel !== "object") continue;
+
+    // Merge defaults under per-channel config (per-channel wins)
+    const config = { ...defaults, ...(perChannel as Record<string, unknown>) };
 
     try {
-      await registry.startChannel(channel.plugin.id, config as Record<string, unknown>);
+      await registry.startChannel(channel.plugin.id, config);
       console.log(`[Loader] Started channel: ${channel.plugin.id}`);
     } catch (err) {
       console.error(

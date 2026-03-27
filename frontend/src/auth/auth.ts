@@ -87,8 +87,8 @@ export function authorizeConnection(
     return { ok: true };
   }
 
-  // Fallback: auth mode set but no credential configured
-  return { ok: true };
+  // Fallback: auth mode set but no credential configured — fail closed
+  return { ok: false, reason: "Auth mode is set but no credential is configured" };
 }
 
 /** Generate a random auth token. */
@@ -115,7 +115,7 @@ export function ensureAuth(config: AuthConfig): AuthConfig {
   if (config.mode === "password" && !config.password) {
     console.warn(
       "[Auth] WARNING: password auth mode is set but no password is configured. " +
-      "Set auth.password in config.json5 or SAPIENT_AUTH_PASSWORD env var.",
+      "Set auth.password in config.json5. Gateway will reject all connections until a password is set.",
     );
   }
 

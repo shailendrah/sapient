@@ -105,6 +105,7 @@ export function createMethods(ctx: GatewayContext): Map<string, RequestHandler> 
 
     // Run agent asynchronously
     runAgent(inbound, key, {
+      runId,
       config: ctx.config.agent ?? { model: DEFAULT_MODEL },
       abortController,
       onStreamEvent(event: StreamEvent) {
