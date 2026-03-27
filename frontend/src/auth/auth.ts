@@ -1,6 +1,5 @@
 /**
  * Gateway authentication — token/password auth with rate limiting.
- * Simplified from OpenClaw's 500-line auth.ts.
  */
 
 import crypto from "node:crypto";

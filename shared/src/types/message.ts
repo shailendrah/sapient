@@ -1,6 +1,5 @@
 /**
  * Core message types — the normalized format that channels produce and consume.
- * Simplified from OpenClaw's message types to what Sapient actually needs.
  */
 
 export type ChatType = "direct" | "group" | "channel";

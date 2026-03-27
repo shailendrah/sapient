@@ -1,6 +1,5 @@
 /**
  * Gateway RPC method handlers.
- * Simplified from OpenClaw's ~100 methods to the essentials.
  */
 
 import {

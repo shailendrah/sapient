@@ -1,6 +1,5 @@
 /**
- * Configuration types — simplified from OpenClaw's 220+ config fields.
- * Only what Sapient needs.
+ * Configuration types 
  */
 
 /** Default model alias — resolved by the Claude Agent SDK. */

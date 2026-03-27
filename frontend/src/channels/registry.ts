@@ -1,6 +1,5 @@
 /**
  * Channel plugin registry — discovers and manages channel plugins.
- * Simplified from OpenClaw's complex build-time scanning to runtime registration.
  */
 
 import type {

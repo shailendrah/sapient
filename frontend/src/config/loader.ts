@@ -1,6 +1,5 @@
 /**
  * Config loader — reads and validates Sapient config.
- * Simplified from OpenClaw's 1500-line io.ts to essentials.
  *
  * Config file: ~/.sapient/config.json5
  * Supports JSON5 format (comments, trailing commas).

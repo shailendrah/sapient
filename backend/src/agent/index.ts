@@ -1,6 +1,6 @@
 /**
  * Sapient Agent — wraps the Claude Agent SDK.
- * This is the core backend that replaces OpenClaw's Pi SDK runtime.
+ * This is the core backend.
  */
 
 import { query as sdkQuery } from "@anthropic-ai/claude-agent-sdk";

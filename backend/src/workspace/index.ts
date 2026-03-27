@@ -2,7 +2,7 @@
  * Workspace coaching — reads SOUL.md, TOOLS.md, AGENTS.md from a workspace
  * directory and wires them into Claude Agent SDK options.
  *
- * File conventions (same as OpenClaw):
+ * File conventions:
  *   SOUL.md     — System prompt / personality / instructions
  *   TOOLS.md    — Tool usage guidance injected into system prompt
  *   AGENTS.md   — Subagent definitions (YAML front matter per agent)

@@ -1,6 +1,5 @@
 /**
  * Channel plugin interface — the contract every channel extension must implement.
- * Simplified from OpenClaw's 30+ optional adapters to the essentials.
  */
 
 import type { InboundMessage, OutboundMessage, ChatType } from "./message.js";

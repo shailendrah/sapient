@@ -1,6 +1,5 @@
 /**
  * Gateway protocol types — WebSocket frames between clients and the gateway server.
- * Simplified from OpenClaw's protocol to the essential request/response/event model.
  */
 
 /** Client handshake parameters. */

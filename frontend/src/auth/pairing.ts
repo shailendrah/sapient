@@ -1,6 +1,5 @@
 /**
  * DM Pairing — challenge/approval flow for unknown senders.
- * Simplified from OpenClaw's 852-line pairing-store.ts.
  */
 
 import fs from "node:fs";
