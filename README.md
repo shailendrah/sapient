@@ -124,6 +124,99 @@ Supports `${ENV_VAR}` substitution and `$secret:name` (reads from `~/.sapient/se
 
 Configure channels in `config.json5`. Only WebChat is active by default.
 
+### Slack Setup
+
+1. Go to https://api.slack.com/apps > **Create New App** > **From scratch**
+2. Name it (e.g. "Sapient"), pick your workspace
+3. Enable **Socket Mode** (left sidebar) — create an App-Level Token with `connections:write` scope. This is your `appToken` (`xapp-...`)
+4. Under **OAuth & Permissions**, add Bot Token Scopes:
+   - `chat:write` — send messages
+   - `im:history` — read DMs
+   - `im:read` — view DM channels
+   - `app_mentions:read` — see @mentions
+5. Under **Event Subscriptions**, enable and subscribe to:
+   - `message.im` — DMs to the bot
+   - `app_mention` — @mentions in channels
+6. **Install to Workspace** — this gives you the Bot Token (`xoxb-...`)
+
+Add to `config.json5`:
+
+```json5
+{
+  channels: {
+    slack: {
+      enabled: true,
+      botToken: "${SLACK_BOT_TOKEN}",   // xoxb-...
+      appToken: "${SLACK_APP_TOKEN}",   // xapp-...
+    }
+  }
+}
+```
+
+Start Sapient — you should see `[Slack] Connected (default)` in the logs. DM the bot or @mention it in a channel. The default `dmPolicy: "pairing"` applies: the first message from an unknown user triggers a pairing code. Approve it with:
+
+```bash
+make pair_sapient CHANNEL=slack CODE=<code>
+```
+
+### WhatsApp Setup
+
+WhatsApp uses QR-based authentication via Baileys (no API keys needed).
+
+1. Add to `config.json5`:
+
+```json5
+{
+  channels: {
+    whatsapp: {
+      enabled: true,
+    }
+  }
+}
+```
+
+2. Start Sapient — a QR code is printed in the terminal
+3. Open WhatsApp on your phone > **Linked Devices** > **Link a Device** > scan the QR code
+4. Once connected, you'll see `[WhatsApp] Connected (default)`
+
+Session credentials are stored in `~/.sapient/whatsapp-auth/` and reused on restart (no re-scan needed).
+
+The default `dmPolicy: "pairing"` applies — the first message from an unknown sender triggers a pairing challenge. Approve with:
+
+```bash
+make pair_sapient CHANNEL=whatsapp CODE=<code>
+```
+
+### Twitter Setup
+
+Twitter uses OAuth 1.0a credentials and polls for @mentions.
+
+1. Go to https://developer.x.com/en/portal/dashboard
+2. Create a project and app (or use an existing one)
+3. Under **Keys and Tokens**, generate:
+   - **API Key and Secret** (Consumer Keys)
+   - **Access Token and Secret** (with Read and Write permissions)
+
+Add to `config.json5`:
+
+```json5
+{
+  channels: {
+    twitter: {
+      enabled: true,
+      appKey: "${TWITTER_APP_KEY}",
+      appSecret: "${TWITTER_APP_SECRET}",
+      accessToken: "${TWITTER_ACCESS_TOKEN}",
+      accessSecret: "${TWITTER_ACCESS_SECRET}",
+      pollIntervalMs: 30000,    // optional, default 30s
+      maxThreadTweets: 3,       // optional, max reply tweets
+    }
+  }
+}
+```
+
+Start Sapient — you should see `[Twitter] Authenticated as @yourbot` and `[Twitter] Polling mentions every 30s`.
+
 ### Twitter Fact-Checking
 
 Reply to any tweet with `@sapient fact check this` and the agent will:
