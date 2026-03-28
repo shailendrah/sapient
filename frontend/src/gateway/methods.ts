@@ -208,8 +208,22 @@ export function createMethods(ctx: GatewayContext): Map<string, RequestHandler> 
     if (redacted.agent?.apiKey) {
       redacted.agent = { ...redacted.agent, apiKey: "***" };
     }
+    if (redacted.agent?.mcpServers) {
+      // Redact headers (may contain auth tokens) and env (may contain secrets)
+      const redactedServers: Record<string, unknown> = {};
+      for (const [name, spec] of Object.entries(redacted.agent.mcpServers)) {
+        const s = { ...spec } as Record<string, unknown>;
+        if ("headers" in s) s.headers = "***";
+        if ("env" in s) s.env = "***";
+        redactedServers[name] = s;
+      }
+      redacted.agent = { ...redacted.agent, mcpServers: redactedServers as any };
+    }
     if (redacted.auth?.token) {
       redacted.auth = { ...redacted.auth, token: "***" };
+    }
+    if (redacted.auth?.password) {
+      redacted.auth = { ...redacted.auth, password: "***" };
     }
     return { config: redacted };
   });

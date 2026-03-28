@@ -5,11 +5,12 @@ Multi-channel AI agent platform — OpenClaw channel frontend + Claude Agent SDK
 ## Architecture
 
 ```
-User (Slack/Telegram/WhatsApp/Discord/WebChat/iMessage/Google Chat)
+User (Slack/Telegram/WhatsApp/Discord/Twitter/WebChat/iMessage/Google Chat)
   -> Channel Plugin (receives message)
   -> Gateway (auth, routing, session management)
   -> Claude Agent SDK (streaming agent with parallel subagents)
       |- Built-in tools (Read, Write, Bash, Grep, Glob, WebSearch)
+      |- MCP tool servers (stdio, HTTP, SSE)
       |- Workspace coaching (SOUL.md, TOOLS.md, AGENTS.md, skills/)
       '- Human-in-the-loop (canUseTool callback)
   -> Gateway (streams events to WebSocket subscribers)
@@ -108,7 +109,7 @@ Supports `${ENV_VAR}` substitution and `$secret:name` (reads from `~/.sapient/se
 
 ## Channels
 
-7 built-in channel plugins:
+8 built-in channel plugins:
 
 | Channel | Config key | Transport |
 |---------|-----------|-----------|
@@ -117,10 +118,47 @@ Supports `${ENV_VAR}` substitution and `$secret:name` (reads from `~/.sapient/se
 | Telegram | `channels.telegram` | grammy |
 | Discord | `channels.discord` | discord.js |
 | WhatsApp | `channels.whatsapp` | Baileys |
+| Twitter | `channels.twitter` | twitter-api-v2 (mention polling) |
 | iMessage | `channels.bluebubbles` | BlueBubbles API |
 | Google Chat | `channels.google-chat` | Google API |
 
 Configure channels in `config.json5`. Only WebChat is active by default.
+
+### Twitter Fact-Checking
+
+Reply to any tweet with `@sapient fact check this` and the agent will:
+1. Fetch the parent tweet for context
+2. Research the claim via WebSearch
+3. Reply in-thread with a verdict and sources
+
+Twitter config is open by default (any @mention triggers it). To restrict, add an `allowFrom` list in the channel config. Be aware of API rate limits — free tier allows 1,500 tweets/month.
+
+## MCP Servers
+
+Connect external tool servers via the [Model Context Protocol](https://modelcontextprotocol.io/):
+
+```json5
+{
+  agent: {
+    mcpServers: {
+      // Local process (stdio)
+      "my-tools": {
+        command: "node",
+        args: ["./mcp-servers/my-tools.js"],
+        env: { "API_KEY": "${MY_API_KEY}" }
+      },
+      // Remote HTTP
+      "remote-tools": {
+        type: "http",
+        url: "https://mcp.example.com/mcp",
+        headers: { "Authorization": "Bearer ${MCP_TOKEN}" }
+      }
+    }
+  }
+}
+```
+
+MCP tools are available alongside built-in tools in all conversations and subagents.
 
 ## Requirements
 
