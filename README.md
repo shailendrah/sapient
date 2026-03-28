@@ -131,7 +131,20 @@ Reply to any tweet with `@sapient fact check this` and the agent will:
 2. Research the claim via WebSearch
 3. Reply in-thread with a verdict and sources
 
-Twitter config is open by default (any @mention triggers it). To restrict, add an `allowFrom` list in the channel config. Be aware of API rate limits — free tier allows 1,500 tweets/month.
+Twitter config is open by default (any @mention triggers it). To restrict which users can trigger it, add an `allowFrom` list:
+
+```json5
+channels: {
+  twitter: {
+    enabled: true,
+    appKey: "...", appSecret: "...",
+    accessToken: "...", accessSecret: "...",
+    allowFrom: ["trusted_user1", "trusted_user2"],
+  }
+}
+```
+
+Be aware of Twitter API rate limits (subject to current plan limits).
 
 ## MCP Servers
 

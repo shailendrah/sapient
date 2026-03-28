@@ -331,7 +331,12 @@ export const twitterPlugin: ChannelPlugin = {
   },
 
   security: {
-    isAllowed: () => true,
+    isAllowed(from: string, config: Record<string, unknown>): boolean {
+      const allowFrom = (config as TwitterConfig & { allowFrom?: string[] }).allowFrom;
+      if (!allowFrom || allowFrom.length === 0) return true;
+      if (allowFrom.includes("*")) return true;
+      return allowFrom.includes(from);
+    },
     dmPolicy: "open",
   },
 };
