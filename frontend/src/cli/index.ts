@@ -4,13 +4,16 @@
  * Sapient CLI — entry point.
  */
 
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { createGateway } from "../gateway/server.js";
 import { createMethods } from "../gateway/methods.js";
 import type { GatewayContext } from "../gateway/methods.js";
 import { ChannelRegistry } from "../channels/registry.js";
 import { loadChannels, startChannels } from "../channels/loader.js";
-import { loadConfig } from "../config/loader.js";
+import { loadConfig, getDefaultWorkspaceDir } from "../config/loader.js";
 import { ensureAuth } from "../auth/auth.js";
 import {
   loadPending,
@@ -19,6 +22,57 @@ import {
   approveDevice,
 } from "../auth/pairing.js";
 import { DEFAULT_MODEL, type Session, type SapientConfig } from "@sapient/shared";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Seed the workspace directory with default files on first run.
+ * Copies from the bundled workspace/ in the project root.
+ * Only creates files that don't already exist — never overwrites.
+ */
+async function seedWorkspaceIfNeeded(workspaceDir: string): Promise<void> {
+  // If the workspace dir already has a SOUL.md, it's been seeded
+  if (fs.existsSync(path.join(workspaceDir, "SOUL.md"))) return;
+
+  // Find the bundled workspace: relative to dist/src/cli/index.js → ../../workspace
+  // In Docker the workspace is at /app/workspace (bundled in the image)
+  const candidates = [
+    path.resolve(__dirname, "../../../workspace"),      // local dev: dist/src/cli -> workspace/
+    path.resolve(__dirname, "../../../../workspace"),    // alternate layout
+    "/app/workspace",                                   // Docker
+  ];
+
+  let bundledDir: string | undefined;
+  for (const c of candidates) {
+    if (fs.existsSync(path.join(c, "SOUL.md"))) {
+      bundledDir = c;
+      break;
+    }
+  }
+
+  if (!bundledDir) {
+    console.log(`[Workspace] No bundled workspace found to seed; using ${workspaceDir}`);
+    fs.mkdirSync(workspaceDir, { recursive: true });
+    return;
+  }
+
+  console.log(`[Workspace] Seeding ${workspaceDir} from ${bundledDir}`);
+  copyDirRecursive(bundledDir, workspaceDir);
+}
+
+/** Recursively copy a directory, skipping files that already exist at the destination. */
+function copyDirRecursive(src: string, dest: string): void {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirRecursive(srcPath, destPath);
+    } else if (!fs.existsSync(destPath)) {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 const program = new Command();
 
@@ -45,18 +99,21 @@ program
       config.gateway = { ...config.gateway, bind: opts.bind };
     }
 
-    // Apply workspace coaching
-    const workspaceDir = opts.workspace ?? config.agent?.workspaceDir;
+    // Resolve workspace directory: CLI flag > config > default (~/.sapient/workspace/)
+    const workspaceDir =
+      opts.workspace ?? config.agent?.workspaceDir ?? getDefaultWorkspaceDir();
+
+    // Seed default workspace on first run if it doesn't exist
+    await seedWorkspaceIfNeeded(workspaceDir);
+
     let agentConfig = config.agent ?? { model: DEFAULT_MODEL };
-    if (workspaceDir) {
-      const { applyWorkspace } = await import("@sapient/backend");
-      agentConfig = applyWorkspace(agentConfig, workspaceDir);
-      console.log(`[Workspace] Loaded coaching from ${workspaceDir}`);
-      if (agentConfig.subagents?.length) {
-        console.log(
-          `[Workspace] Subagents: ${agentConfig.subagents.map((s) => s.name).join(", ")}`,
-        );
-      }
+    const { applyWorkspace } = await import("@sapient/backend");
+    agentConfig = applyWorkspace(agentConfig, workspaceDir);
+    console.log(`[Workspace] Loaded coaching from ${workspaceDir}`);
+    if (agentConfig.subagents?.length) {
+      console.log(
+        `[Workspace] Subagents: ${agentConfig.subagents.map((s) => s.name).join(", ")}`,
+      );
     }
 
     // Ensure auth is set up

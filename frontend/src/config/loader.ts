@@ -24,6 +24,11 @@ export function getStateDir(): string {
   return STATE_DIR;
 }
 
+/** Get the default workspace directory path. */
+export function getDefaultWorkspaceDir(): string {
+  return process.env.SAPIENT_WORKSPACE_DIR ?? path.join(STATE_DIR, "workspace");
+}
+
 /** Get the config file path. */
 export function getConfigPath(): string {
   return process.env.SAPIENT_CONFIG_PATH ?? path.join(STATE_DIR, CONFIG_FILENAME);

@@ -19,6 +19,9 @@ COPY shared/ shared/
 COPY backend/ backend/
 COPY frontend/ frontend/
 
+# Copy bundled workspace (used to seed ~/.sapient/workspace/ on first run)
+COPY workspace/ workspace/
+
 # Build all workspaces
 RUN pnpm -r build
 
@@ -29,5 +32,5 @@ VOLUME /root/.sapient
 # Gateway port
 EXPOSE 18789
 
-# Default command
-CMD ["node", "frontend/dist/src/cli/index.js", "start", "--bind", "lan", "-w", "/workspace"]
+# Default command — workspace defaults to ~/.sapient/workspace/ (seeded from /app/workspace)
+CMD ["node", "frontend/dist/src/cli/index.js", "start", "--bind", "lan"]

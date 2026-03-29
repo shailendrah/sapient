@@ -8,11 +8,9 @@ services:
       - "18789:18789"
     volumes:
       - sapient-state:/root/.sapient
-      - ./workspace:/workspace
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - SAPIENT_STATE_DIR=/root/.sapient
-    command: ["node", "frontend/dist/src/cli/index.js", "start", "--bind", "lan", "-w", "/workspace"]
     restart: unless-stopped
 
 volumes:

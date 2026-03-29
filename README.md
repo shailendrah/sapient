@@ -32,10 +32,12 @@ User (Slack/Telegram/WhatsApp/Discord/Twitter/WebChat/iMessage/Google Chat)
 ```bash
 pnpm install
 pnpm -r build
-node frontend/dist/src/cli/index.js start -w workspace
+node frontend/dist/src/cli/index.js start
 # Open http://127.0.0.1:18789/
 # Paste the gateway token shown in terminal
 ```
+
+Workspace defaults to `~/.sapient/workspace/` and is seeded with default coaching files on first run. Override with `-w /path/to/workspace`.
 
 ### Docker
 
@@ -81,7 +83,7 @@ Add more blocks to define additional subagents. The main agent dispatches to the
 | `AGENTS.md` | Subagent definitions (YAML frontmatter) |
 | `skills/` | Skill plugins (SKILL.md frontmatter) |
 
-Edit via the web UI sidebar or directly on disk. Changes take effect on the next agent run.
+Default location: `~/.sapient/workspace/`. Override with `-w` flag or `agent.workspaceDir` in config. Edit via the web UI sidebar or directly on disk. Changes take effect on the next agent run.
 
 ## Configuration
 
