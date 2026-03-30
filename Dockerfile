@@ -29,6 +29,7 @@ COPY workspace-defaults/ workspace-defaults/
 # Copy MCP servers and install their dependencies
 COPY mcp-servers/ mcp-servers/
 RUN cd mcp-servers/embed && npm install --omit=dev
+RUN cd mcp-servers/oracle-proxy && npm install --omit=dev
 
 # Install SQLcl (Oracle SQL command-line with MCP server support)
 COPY sqlcl/ /usr/local/sqlcl/
