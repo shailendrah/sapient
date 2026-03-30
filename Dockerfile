@@ -35,6 +35,9 @@ RUN cd mcp-servers/oracle-proxy && npm install --omit=dev
 COPY sqlcl/ /usr/local/sqlcl/
 ENV PATH="/usr/local/sqlcl/bin:${PATH}"
 
+# Install Claude Code CLI (required by Claude Agent SDK)
+RUN npm install -g @anthropic-ai/claude-code@latest
+
 # Build all workspaces
 RUN pnpm -r build
 

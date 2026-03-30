@@ -40,6 +40,43 @@ export interface AgentRunResult {
   error?: string;
 }
 
+/** Built-in tools that should always be allowed. */
+const BUILTIN_TOOLS = [
+  "Read", "Write", "Edit", "Bash", "Grep", "Glob",
+  "WebSearch", "WebFetch", "Agent", "ToolSearch",
+];
+
+/**
+ * Build the full list of allowed tools including MCP tool names.
+ * MCP tools are namespaced as mcp__<serverName>__<toolName>.
+ * Since we don't know the tool names upfront, we allow all tools
+ * from configured MCP servers by pattern.
+ */
+function buildAllowedTools(config: AgentConfig): string[] {
+  const tools = [...BUILTIN_TOOLS];
+
+  // Add wildcard patterns for MCP server tools
+  if (config.mcpServers) {
+    for (const serverName of Object.keys(config.mcpServers)) {
+      // The SDK uses mcp__<name>__<tool> naming
+      // Add common Oracle MCP tools explicitly
+      tools.push(
+        `mcp__${serverName}__run-sql`,
+        `mcp__${serverName}__run-sqlcl`,
+        `mcp__${serverName}__schema-information`,
+        `mcp__${serverName}__connect`,
+        `mcp__${serverName}__disconnect`,
+        `mcp__${serverName}__list-connections`,
+        `mcp__${serverName}__embed`,
+        `mcp__${serverName}__embed_batch`,
+        `mcp__${serverName}__embed_info`,
+      );
+    }
+  }
+
+  return tools;
+}
+
 let seqCounter = 0;
 
 function makeEvent(
@@ -96,8 +133,8 @@ export async function runAgent(
         model: config.model ?? DEFAULT_MODEL,
         systemPrompt: config.systemPrompt,
         maxTurns: 50,
-        permissionMode: "bypassPermissions",
-        allowDangerouslySkipPermissions: true,
+        permissionMode: config.permissionMode ?? "acceptEdits",
+        allowedTools: buildAllowedTools(config),
         agents: Object.keys(agents).length > 0 ? agents : undefined,
         mcpServers: config.mcpServers,
         abortController,
