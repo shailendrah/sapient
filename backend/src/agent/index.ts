@@ -96,13 +96,8 @@ export async function runAgent(
         model: config.model ?? DEFAULT_MODEL,
         systemPrompt: config.systemPrompt,
         maxTurns: 50,
-        permissionMode: config.permissionMode ?? "acceptEdits",
-        allowedTools: [
-          "Read", "Write", "Edit", "Bash", "Grep", "Glob",
-          "WebSearch", "WebFetch", "Agent",
-        ],
-        allowDangerouslySkipPermissions:
-          config.permissionMode === "bypassPermissions" ? true : undefined,
+        permissionMode: "bypassPermissions",
+        allowDangerouslySkipPermissions: true,
         agents: Object.keys(agents).length > 0 ? agents : undefined,
         mcpServers: config.mcpServers,
         abortController,
