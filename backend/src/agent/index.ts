@@ -97,6 +97,10 @@ export async function runAgent(
         systemPrompt: config.systemPrompt,
         maxTurns: 50,
         permissionMode: config.permissionMode ?? "acceptEdits",
+        allowedTools: [
+          "Read", "Write", "Edit", "Bash", "Grep", "Glob",
+          "WebSearch", "WebFetch", "Agent",
+        ],
         allowDangerouslySkipPermissions:
           config.permissionMode === "bypassPermissions" ? true : undefined,
         agents: Object.keys(agents).length > 0 ? agents : undefined,
