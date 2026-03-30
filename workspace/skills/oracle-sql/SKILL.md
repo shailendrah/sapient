@@ -1,48 +1,44 @@
 ---
 name: oracle-sql
-description: Oracle database access via SQLcl
+description: Oracle database access via SQLcl MCP server
 emoji: "🗄️"
-requires:
-  bins: ["sql"]
 ---
-# Oracle SQL via SQLcl
+# Oracle SQL via SQLcl MCP Server
 
-Use `sql` (SQLcl) to interact with Oracle databases.
+Oracle database access is provided through the SQLcl MCP server. The connection is pre-established — no credentials needed in queries.
 
-## Connection
+## Available MCP Tools
 
-Connect using environment variables or secrets:
-```bash
-sql -s $ORACLE_USER/$ORACLE_PASSWORD@$ORACLE_DSN
+- **`run-sql`** — Execute SQL queries. Returns CSV-formatted results. Supports async execution for long-running queries.
+- **`run-sqlcl`** — Execute SQLcl CLI commands (DESC, SET, formatting, etc.).
+- **`schema-information`** — Get metadata about the connected schema.
+
+## Usage Examples
+
+### Run a query
+Use the `run-sql` tool with `sql` parameter:
+```
+SELECT table_name FROM user_tables ORDER BY table_name
 ```
 
-Or with a connect string:
-```bash
-sql -s user/pass@host:port/service_name
+### Describe a table
+Use `run-sqlcl` with `sqlcl` parameter:
+```
+DESC my_table
 ```
 
-## Running Queries
-
-Always use `-s` (silent) mode and `SET` formatting for clean output:
-```bash
-sql -s user/pass@dsn <<'SQL'
-SET PAGESIZE 50000
-SET LINESIZE 200
-SET FEEDBACK OFF
-SET HEADING ON
-SET COLSEP '|'
-
-SELECT table_name FROM user_tables ORDER BY table_name;
-SQL
+### Vector similarity search
+```sql
+SELECT id, content, VECTOR_DISTANCE(embedding, :query_vec, COSINE) AS similarity
+FROM documents
+ORDER BY VECTOR_DISTANCE(embedding, :query_vec, COSINE)
+FETCH FIRST 5 ROWS ONLY
 ```
 
 ## Guidelines
 
-- Always use `SET FEEDBACK OFF` to suppress row count noise
-- Use `SET PAGESIZE 50000` to avoid page breaks in output
-- Use `SET LINESIZE 200` or wider for wide result sets
-- For large result sets, use `FETCH FIRST n ROWS ONLY` or `ROWNUM`
-- Use `EXPLAIN PLAN FOR` then `SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY)` for execution plans
-- Never run DDL (CREATE, ALTER, DROP) or DML (INSERT, UPDATE, DELETE) unless explicitly asked
-- Prefer read-only operations by default
-- Use bind variables or literals safely — never interpolate untrusted input into SQL
+- Default to read-only operations
+- Use `FETCH FIRST n ROWS ONLY` to limit large result sets
+- Start exploration with `schema-information` tool
+- For performance analysis, use `EXPLAIN PLAN FOR` followed by `SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY)`
+- Never run DDL or DML unless explicitly asked

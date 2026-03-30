@@ -268,6 +268,39 @@ Connect external tool servers via the [Model Context Protocol](https://modelcont
 
 MCP tools are available alongside built-in tools in all conversations and subagents.
 
+### Oracle Database via SQLcl MCP Server
+
+Oracle 26ai includes a built-in MCP server in SQLcl. This gives the agent direct SQL execution, schema exploration, and vector search — no custom code needed.
+
+```json5
+{
+  agent: {
+    mcpServers: {
+      "oracle": {
+        command: "sql",
+        args: ["-S", "user/pass@//localhost:1521/FREEPDB1", "-mcp"]
+      }
+    }
+  }
+}
+```
+
+Or with env vars:
+```json5
+{
+  agent: {
+    mcpServers: {
+      "oracle": {
+        command: "sql",
+        args: ["-S", "${ORACLE_USER}/${ORACLE_PASSWORD}@${ORACLE_DSN}", "-mcp"]
+      }
+    }
+  }
+}
+```
+
+This exposes `run-sql`, `run-sqlcl`, and `schema-information` tools to the agent. The `oracle-dba` and `oracle-analyst` subagents use these for structured queries, analytics, and vector similarity search.
+
 ## Requirements
 
 - Node.js >= 20
