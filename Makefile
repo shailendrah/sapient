@@ -10,8 +10,10 @@ help: ## Show this help
 build: ## Build the Docker image
 	$(COMPOSE) build
 
-start_sapient: ## Start Sapient in foreground (Ctrl+C to stop)
-	$(COMPOSE) up --build
+start_sapient: ## Start Sapient (detached). Use 'make logs' to tail output.
+	$(COMPOSE) up --build -d
+	@echo ""
+	@echo "Sapient started. Run 'make logs' to see output, 'make status' to check."
 
 stop_sapient: ## Stop the running Sapient container
 	$(COMPOSE) down
