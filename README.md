@@ -285,7 +285,36 @@ Oracle 26ai includes a built-in MCP server in SQLcl. This gives the agent direct
 }
 ```
 
-The MCP server starts without a connection. The agent connects on first use via `run-sqlcl` with `connect user/pass@//host:port/service`. This exposes `run-sql`, `run-sqlcl`, `schema-information`, `connect`, and `disconnect` tools. The `oracle-dba` and `oracle-analyst` subagents use these for structured queries, analytics, and vector similarity search.
+The MCP server starts without a connection. The agent connects on first use via `run-sqlcl` with `connect user/pass@//host:port/service`. This exposes `run-sql`, `run-sqlcl`, `schema-information`, `connect`, and `disconnect` tools.
+
+### Embedding Server for Vector Search (RAG)
+
+A bundled MCP server provides text-to-vector embedding for use with Oracle AI Vector Search:
+
+```json5
+{
+  agent: {
+    mcpServers: {
+      "oracle": {
+        command: "sql",
+        args: ["-mcp"]
+      },
+      "embed": {
+        command: "node",
+        args: ["mcp-servers/embed/index.js"],
+        env: { "EMBED_MODEL": "Xenova/all-MiniLM-L6-v2" }
+      }
+    }
+  }
+}
+```
+
+The agent's RAG workflow:
+1. Call `embed` tool with the user's question → gets an Oracle-compatible vector string
+2. Call `run-sql` with `SELECT ... ORDER BY VECTOR_DISTANCE(col, TO_VECTOR('<vector>'), COSINE)` → ranked results
+3. Reason over the retrieved context and respond
+
+The `embed` tool runs locally (no external API calls) using transformers.js. Any table with a `VECTOR` column works — the agent discovers them via `user_tab_columns`.
 
 ## Requirements
 

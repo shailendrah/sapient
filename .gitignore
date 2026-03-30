@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+mcp-servers/*/node_modules/
 
 # Compiled JS output (source is .ts)
 frontend/extensions/**/*.js
