@@ -379,7 +379,7 @@ sapient/
     ui/                 # Web UI (login, chat, pairing, workspace editor)
   mcp-servers/
     embed/              # Local embedding MCP server (transformers.js)
-  workspace/            # Default workspace (SOUL.md, AGENTS.md, skills/)
+  workspace-defaults/   # Factory defaults (seeded to ~/.sapient/workspace/ on first run)
   Makefile              # Docker targets (start, stop, pair, logs)
   Dockerfile
   docker-compose.yml

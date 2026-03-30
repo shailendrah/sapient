@@ -37,9 +37,9 @@ async function seedWorkspaceIfNeeded(workspaceDir: string): Promise<void> {
   // Find the bundled workspace: relative to dist/src/cli/index.js → ../../workspace
   // In Docker the workspace is at /app/workspace (bundled in the image)
   const candidates = [
-    path.resolve(__dirname, "../../../workspace"),      // local dev: dist/src/cli -> workspace/
-    path.resolve(__dirname, "../../../../workspace"),    // alternate layout
-    "/app/workspace",                                   // Docker
+    path.resolve(__dirname, "../../../workspace-defaults"),      // local dev: dist/src/cli -> workspace-defaults/
+    path.resolve(__dirname, "../../../../workspace-defaults"),    // alternate layout
+    "/app/workspace-defaults",                                   // Docker
   ];
 
   let bundledDir: string | undefined;

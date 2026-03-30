@@ -19,8 +19,8 @@ COPY shared/ shared/
 COPY backend/ backend/
 COPY frontend/ frontend/
 
-# Copy bundled workspace (used to seed ~/.sapient/workspace/ on first run)
-COPY workspace/ workspace/
+# Copy bundled workspace defaults (used to seed ~/.sapient/workspace/ on first run)
+COPY workspace-defaults/ workspace-defaults/
 
 # Build all workspaces
 RUN pnpm -r build
