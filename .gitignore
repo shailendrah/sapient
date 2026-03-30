@@ -29,6 +29,9 @@ Thumbs.db
 # Docker
 sapient-state/
 
+# SQLcl (symlinked for Docker build, not repo content)
+sqlcl
+
 # Scratch files
 x.err
 x.out

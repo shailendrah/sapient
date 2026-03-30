@@ -1,6 +1,10 @@
 FROM node:20-slim
 
-# Install pnpm
+# Install Java (required for SQLcl) and pnpm
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
@@ -21,6 +25,14 @@ COPY frontend/ frontend/
 
 # Copy bundled workspace defaults (used to seed ~/.sapient/workspace/ on first run)
 COPY workspace-defaults/ workspace-defaults/
+
+# Copy MCP servers and install their dependencies
+COPY mcp-servers/ mcp-servers/
+RUN cd mcp-servers/embed && npm install --omit=dev
+
+# Install SQLcl (Oracle SQL command-line with MCP server support)
+COPY sqlcl/ /usr/local/sqlcl/
+ENV PATH="/usr/local/sqlcl/bin:${PATH}"
 
 # Build all workspaces
 RUN pnpm -r build
