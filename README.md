@@ -278,28 +278,14 @@ Oracle 26ai includes a built-in MCP server in SQLcl. This gives the agent direct
     mcpServers: {
       "oracle": {
         command: "sql",
-        args: ["-S", "user/pass@//localhost:1521/FREEPDB1", "-mcp"]
+        args: ["-mcp"]
       }
     }
   }
 }
 ```
 
-Or with env vars:
-```json5
-{
-  agent: {
-    mcpServers: {
-      "oracle": {
-        command: "sql",
-        args: ["-S", "${ORACLE_USER}/${ORACLE_PASSWORD}@${ORACLE_DSN}", "-mcp"]
-      }
-    }
-  }
-}
-```
-
-This exposes `run-sql`, `run-sqlcl`, and `schema-information` tools to the agent. The `oracle-dba` and `oracle-analyst` subagents use these for structured queries, analytics, and vector similarity search.
+The MCP server starts without a connection. The agent connects on first use via `run-sqlcl` with `connect user/pass@//host:port/service`. This exposes `run-sql`, `run-sqlcl`, `schema-information`, `connect`, and `disconnect` tools. The `oracle-dba` and `oracle-analyst` subagents use these for structured queries, analytics, and vector similarity search.
 
 ## Requirements
 

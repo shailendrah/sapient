@@ -5,7 +5,7 @@ emoji: "🗄️"
 ---
 # Oracle SQL via SQLcl MCP Server
 
-Oracle database access is provided through the SQLcl MCP server. The connection is pre-established — no credentials needed in queries.
+Oracle database access is provided through the SQLcl MCP server. Before running queries, connect using `run-sqlcl` with `connect $ORACLE_CONN`.
 
 ## Available MCP Tools
 
@@ -27,11 +27,16 @@ Use `run-sqlcl` with `sqlcl` parameter:
 DESC my_table
 ```
 
-### Vector similarity search
+### Discover vector columns
 ```sql
-SELECT id, content, VECTOR_DISTANCE(embedding, :query_vec, COSINE) AS similarity
-FROM documents
-ORDER BY VECTOR_DISTANCE(embedding, :query_vec, COSINE)
+SELECT table_name, column_name FROM user_tab_columns WHERE data_type = 'VECTOR'
+```
+
+### Vector similarity search (any table with a VECTOR column)
+```sql
+SELECT id, content, VECTOR_DISTANCE(vec_col, :query_vec, COSINE) AS similarity
+FROM my_table
+ORDER BY VECTOR_DISTANCE(vec_col, :query_vec, COSINE)
 FETCH FIRST 5 ROWS ONLY
 ```
 
