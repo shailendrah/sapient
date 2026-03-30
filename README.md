@@ -1,29 +1,60 @@
 # Sapient
 
-Multi-channel AI agent platform — OpenClaw channel frontend + Claude Agent SDK backend.
+Multi-channel AI agent platform with adaptive knowledge retrieval.
+
+Sapient combines a multi-channel frontend (derived from OpenClaw) with a Claude Agent SDK backend, Oracle AI Vector Search, and an adaptive retrieval system that automatically selects the best knowledge source for each query.
+
+## What Makes Sapient Different
+
+| Capability | OpenClaw | Sapient |
+|-----------|----------|---------|
+| LLM Backend | Pi SDK (multi-provider) | Claude Agent SDK (native subagents, streaming) |
+| Knowledge Retrieval | WebSearch only | Adaptive: vector search + WebSearch, compares and picks the best |
+| Database | None | Oracle 26ai via SQLcl MCP server (SQL + vector search) |
+| Embeddings | None | Local embedding server (transformers.js, no external API) |
+| Tool Integration | Built-in tools | Built-in tools + MCP servers (stdio, HTTP, SSE) |
+| Fact-Checking | None | Twitter mention-triggered with source citations |
+| Auth | Token only | Token + password + device pairing |
+
+### Adaptive Knowledge Retrieval
+
+When answering questions, Sapient's `knowledge-retriever` subagent:
+
+1. **Detects available sources** — vector search, web search, local files
+2. **Queries all available sources in parallel** — vector similarity search against your knowledge base, WebSearch for live information
+3. **Compares results** — scores vector results by cosine distance, web results by relevance and authority
+4. **Picks the best** — recommends which source answered the question better
+
+If vector search is not configured, the retriever falls back to WebSearch and local files — equivalent to OpenClaw's behavior but with the same unified interface.
 
 ## Architecture
 
 ```
 User (Slack/Telegram/WhatsApp/Discord/Twitter/WebChat/iMessage/Google Chat)
   -> Channel Plugin (receives message)
-  -> Gateway (auth, routing, session management)
+  -> Gateway (auth, device pairing, routing, session management)
   -> Claude Agent SDK (streaming agent with parallel subagents)
       |- Built-in tools (Read, Write, Bash, Grep, Glob, WebSearch)
-      |- MCP tool servers (stdio, HTTP, SSE)
+      |- MCP servers (Oracle SQLcl, embedding, custom)
+      |- knowledge-retriever (adaptive: vector search vs WebSearch)
       |- Workspace coaching (SOUL.md, TOOLS.md, AGENTS.md, skills/)
       '- Human-in-the-loop (canUseTool callback)
   -> Gateway (streams events to WebSocket subscribers)
   -> Channel Outbound (sends reply to user)
 ```
 
-## Workspaces
+## Subagents
 
-| Workspace | Purpose |
-|-----------|---------|
-| `shared/` | Types, protocol definitions, constants |
-| `backend/` | Claude Agent SDK integration, agent runtime, workspace coaching |
-| `frontend/` | CLI, gateway server, channels, auth, config, web UI |
+| Agent | Purpose | Tools |
+|-------|---------|-------|
+| `knowledge-retriever` | Parallel retrieval from vector DB + web, compares and ranks | embed, run-sql, WebSearch, Read, Grep |
+| `researcher` | Web search and information gathering | WebSearch, WebFetch, Read |
+| `coder` | Code reading, writing, editing | Read, Write, Edit, Bash, Grep, Glob |
+| `analyst` | Data file analysis | Read, Bash, Grep |
+| `oracle-dba` | Schema exploration, SQL queries, vector search | run-sql, run-sqlcl, schema-information, embed |
+| `oracle-analyst` | Analytics, window functions, pivots, time-series | run-sql, run-sqlcl, schema-information, embed |
+
+All agents are defined in `workspace/AGENTS.md` and can be customized or extended.
 
 ## Quick Start
 
@@ -59,32 +90,6 @@ When a new client connects to the web UI:
 3. Admin approves: `make pair_sapient DEVICE=<device-name>`
 4. UI auto-detects approval and enables chat
 
-## Agents
-
-Agents are defined in `workspace/AGENTS.md`:
-
-```yaml
----
-name: researcher
-description: Research agent for web searches
-allowedTools: ["WebSearch", "WebFetch", "Read"]
----
-You are a research specialist. Search the web and summarize findings.
-```
-
-Add more blocks to define additional subagents. The main agent dispatches to them based on the task.
-
-## Workspace Coaching
-
-| File | Purpose |
-|------|---------|
-| `SOUL.md` | System prompt, personality, instructions |
-| `TOOLS.md` | Tool usage guidelines |
-| `AGENTS.md` | Subagent definitions (YAML frontmatter) |
-| `skills/` | Skill plugins (SKILL.md frontmatter) |
-
-Default location: `~/.sapient/workspace/`. Override with `-w` flag or `agent.workspaceDir` in config. Edit via the web UI sidebar or directly on disk. Changes take effect on the next agent run.
-
 ## Configuration
 
 Config file: `~/.sapient/config.json5`
@@ -99,6 +104,16 @@ Config file: `~/.sapient/config.json5`
   agent: {
     model: "sonnet",    // "sonnet", "opus", "haiku", or full model ID
     permissionMode: "acceptEdits",
+    mcpServers: {
+      // Oracle database (optional)
+      "oracle": { command: "sql", args: ["-mcp"] },
+      // Local embeddings for vector search (optional)
+      "embed": {
+        command: "node",
+        args: ["mcp-servers/embed/index.js"],
+        env: { "EMBED_MODEL": "Xenova/all-MiniLM-L6-v2" }
+      },
+    },
   },
   auth: {
     // token is auto-generated if not set
@@ -108,6 +123,16 @@ Config file: `~/.sapient/config.json5`
 ```
 
 Supports `${ENV_VAR}` substitution and `$secret:name` (reads from `~/.sapient/secrets/<name>`).
+
+### Minimal Config (no vector search)
+
+Without MCP servers configured, Sapient works like OpenClaw — WebSearch, file tools, and the Claude agent. No database or embedding setup needed.
+
+```json5
+{
+  agent: { model: "sonnet" },
+}
+```
 
 ## Channels
 
@@ -219,21 +244,19 @@ Add to `config.json5`:
 
 Start Sapient — you should see `[Twitter] Authenticated as @yourbot` and `[Twitter] Polling mentions every 30s`.
 
-### Twitter Fact-Checking
+#### Twitter Fact-Checking
 
 Reply to any tweet with `@sapient fact check this` and the agent will:
 1. Fetch the parent tweet for context
-2. Research the claim via WebSearch
+2. Research the claim via WebSearch (and vector search if configured)
 3. Reply in-thread with a verdict and sources
 
-Twitter config is open by default (any @mention triggers it). To restrict which users can trigger it, add an `allowFrom` list:
+To restrict which users can trigger it, add an `allowFrom` list:
 
 ```json5
 channels: {
   twitter: {
-    enabled: true,
-    appKey: "...", appSecret: "...",
-    accessToken: "...", accessSecret: "...",
+    // ...credentials...
     allowFrom: ["trusted_user1", "trusted_user2"],
   }
 }
@@ -287,18 +310,14 @@ Oracle 26ai includes a built-in MCP server in SQLcl. This gives the agent direct
 
 The MCP server starts without a connection. The agent connects on first use via `run-sqlcl` with `connect user/pass@//host:port/service`. This exposes `run-sql`, `run-sqlcl`, `schema-information`, `connect`, and `disconnect` tools.
 
-### Embedding Server for Vector Search (RAG)
+### Embedding Server for Vector Search
 
-A bundled MCP server provides text-to-vector embedding for use with Oracle AI Vector Search:
+A bundled MCP server provides text-to-vector embedding for similarity search:
 
 ```json5
 {
   agent: {
     mcpServers: {
-      "oracle": {
-        command: "sql",
-        args: ["-mcp"]
-      },
       "embed": {
         command: "node",
         args: ["mcp-servers/embed/index.js"],
@@ -309,15 +328,66 @@ A bundled MCP server provides text-to-vector embedding for use with Oracle AI Ve
 }
 ```
 
-The agent's RAG workflow:
-1. Call `embed` tool with the user's question → gets an Oracle-compatible vector string
-2. Call `run-sql` with `SELECT ... ORDER BY VECTOR_DISTANCE(col, TO_VECTOR('<vector>'), COSINE)` → ranked results
-3. Reason over the retrieved context and respond
+Tools provided:
+- `embed` — convert text to an Oracle-compatible vector string for `TO_VECTOR()` / `VECTOR_DISTANCE()`
+- `embed_batch` — batch embedding for multiple texts
+- `embed_info` — model metadata (dimensions, format)
 
-The `embed` tool runs locally (no external API calls) using transformers.js. Any table with a `VECTOR` column works — the agent discovers them via `user_tab_columns`.
+Runs locally via transformers.js. No external API calls. Works with any Oracle table that has a `VECTOR` column — the agent discovers them automatically.
+
+## Adaptive RAG Pipeline
+
+When both Oracle and embedding MCP servers are configured, the `knowledge-retriever` subagent enables an adaptive retrieval pipeline:
+
+```
+User question
+  -> knowledge-retriever (parallel)
+      |-> Vector path: embed(question) -> VECTOR_DISTANCE() query -> ranked docs
+      |-> Web path:    WebSearch(question) -> ranked web results
+      '-> Compare: cosine distance vs web relevance -> pick best source
+  -> Main agent reasons over the best available context
+```
+
+| Scenario | What happens |
+|----------|-------------|
+| Vector + Web configured | Both run in parallel, best result wins |
+| Web only (no vector DB) | WebSearch only — equivalent to OpenClaw |
+| Vector only (no web) | Vector search only |
+| Neither | Agent uses its training knowledge |
+
+The agent never assumes vector search is available. It checks its tools and adapts.
+
+## Workspace Coaching
+
+| File | Purpose |
+|------|---------|
+| `SOUL.md` | System prompt, personality, retrieval strategy |
+| `TOOLS.md` | Tool usage guidelines |
+| `AGENTS.md` | Subagent definitions (YAML frontmatter) |
+| `skills/` | Skill plugins (SKILL.md frontmatter) |
+
+Default location: `~/.sapient/workspace/`. Override with `-w` flag or `agent.workspaceDir` in config. Edit via the web UI sidebar or directly on disk. Changes take effect on the next agent run.
+
+## Project Structure
+
+```
+sapient/
+  shared/               # Types, protocol definitions, constants
+  backend/              # Claude Agent SDK integration, agent runtime
+  frontend/             # CLI, gateway, channels, auth, config, web UI
+    extensions/         # Channel plugins (slack, telegram, discord, etc.)
+    ui/                 # Web UI (login, chat, pairing, workspace editor)
+  mcp-servers/
+    embed/              # Local embedding MCP server (transformers.js)
+  workspace/            # Default workspace (SOUL.md, AGENTS.md, skills/)
+  Makefile              # Docker targets (start, stop, pair, logs)
+  Dockerfile
+  docker-compose.yml
+```
 
 ## Requirements
 
 - Node.js >= 20
 - pnpm >= 9
 - `ANTHROPIC_API_KEY` environment variable
+- Oracle 26ai + SQLcl (optional, for database and vector search)
