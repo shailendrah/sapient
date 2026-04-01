@@ -67,10 +67,17 @@
     .modal-footer button { padding: 8px 16px; border-radius: 6px; border: 1px solid #30363d; background: #21262d; color: #c9d1d9; cursor: pointer; font-size: 13px; }
     .modal-footer button.primary { background: #1f6feb; border-color: #1f6feb; color: #fff; }
     .ws-file-list { list-style: none; }
-    .ws-file-item { padding: 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 2px; font-size: 13px; }
+    .ws-file-item { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; margin-bottom: 1px; font-size: 13px; }
     .ws-file-item:hover { background: #21262d; }
     .ws-file-item .exists { color: #238636; }
     .ws-file-item .missing { color: #8b949e; }
+    .collapsible { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; }
+    .collapsible .chevron { font-size: 10px; transition: transform 0.15s; color: #8b949e; }
+    .collapsible .chevron.open { transform: rotate(90deg); }
+    .collapsible-content { overflow: hidden; }
+    .collapsible-content.collapsed { display: none; }
+    .sub-section { margin-top: 6px; }
+    .sub-section h4 { font-size: 11px; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; margin-bottom: 4px; padding-left: 4px; }
     .ws-editor { width: 100%; min-height: 300px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px; color: #c9d1d9; font-family: monospace; font-size: 13px; line-height: 1.5; resize: vertical; outline: none; }
     .ws-editor:focus { border-color: #1f6feb; }
     .ws-save-note { font-size: 12px; color: #8b949e; }
@@ -107,12 +114,22 @@
         <div id="sessionsList"></div>
       </div>
       <div class="sidebar-section">
-        <h3>Workspace</h3>
-        <div id="workspaceList" style="font-size:12px;color:#8b949e">No workspace</div>
+        <h3 class="collapsible" onclick="toggleSection('wsFiles')"><span class="chevron open" id="wsFilesChevron">&#9654;</span> Workspace</h3>
+        <div id="wsFiles" class="collapsible-content">
+          <div id="workspaceFilesList" style="font-size:12px;color:#8b949e">No workspace</div>
+        </div>
       </div>
       <div class="sidebar-section">
-        <h3>Config</h3>
-        <div id="configInfo" style="font-size:12px;color:#8b949e"></div>
+        <h3 class="collapsible" onclick="toggleSection('wsSkills')"><span class="chevron" id="wsSkillsChevron">&#9654;</span> Skills</h3>
+        <div id="wsSkills" class="collapsible-content collapsed">
+          <div id="skillsList" style="font-size:12px;color:#8b949e">No skills</div>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <h3 class="collapsible" onclick="toggleSection('configSection')"><span class="chevron" id="configSectionChevron">&#9654;</span> Config</h3>
+        <div id="configSection" class="collapsible-content collapsed">
+          <div id="configInfo" style="font-size:12px;color:#8b949e"></div>
+        </div>
       </div>
     </div>
     <!-- Workspace Editor Modal -->
@@ -164,7 +181,8 @@
     const channelsList = document.getElementById('channelsList');
     const sessionsList = document.getElementById('sessionsList');
     const configInfo = document.getElementById('configInfo');
-    const workspaceList = document.getElementById('workspaceList');
+    const workspaceFilesList = document.getElementById('workspaceFilesList');
+    const skillsList = document.getElementById('skillsList');
     const wsModal = document.getElementById('wsModal');
     const wsModalTitle = document.getElementById('wsModalTitle');
     const wsEditor = document.getElementById('wsEditor');
@@ -378,6 +396,18 @@
       }
     }
 
+    function toggleSection(id) {
+      const el = document.getElementById(id);
+      const chevron = document.getElementById(id + 'Chevron');
+      if (el.classList.contains('collapsed')) {
+        el.classList.remove('collapsed');
+        chevron.classList.add('open');
+      } else {
+        el.classList.add('collapsed');
+        chevron.classList.remove('open');
+      }
+    }
+
     async function refreshSidebar() {
       // Channels
       const chRes = await send('channels.list');
@@ -395,21 +425,27 @@
         ).join('') || '<div style="font-size:12px;color:#8b949e">No sessions</div>';
       }
 
-      // Workspace
+      // Workspace files
       const wsRes = await send('workspace.list');
       if (wsRes.ok && wsRes.payload.dir) {
-        const items = wsRes.payload.files.map(f =>
+        workspaceFilesList.innerHTML = wsRes.payload.files.map(f =>
           `<div class="ws-file-item" onclick="openWsFile('${f.name}')">
             <span class="${f.exists ? 'exists' : 'missing'}">${f.exists ? '●' : '○'}</span>
             ${f.name}
           </div>`
         ).join('');
-        const skillItems = (wsRes.payload.skills || []).map(s =>
-          `<div class="ws-file-item" style="padding-left:16px;color:#8b949e">
-            <span class="exists">●</span> skills/${s}
-          </div>`
-        ).join('');
-        workspaceList.innerHTML = items + skillItems;
+
+        // Skills (separate collapsible section)
+        const skills = wsRes.payload.skills || [];
+        if (skills.length > 0) {
+          skillsList.innerHTML = skills.map(s =>
+            `<div class="ws-file-item" onclick="openWsFile('skills/${s}/SKILL.md')">
+              <span class="exists">●</span> ${s}
+            </div>`
+          ).join('');
+        } else {
+          skillsList.innerHTML = '<div style="font-size:12px;color:#8b949e;padding:4px">No skills</div>';
+        }
       }
 
       // Config
