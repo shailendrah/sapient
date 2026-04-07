@@ -10,8 +10,26 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - SAPIENT_STATE_DIR=/root/.sapient
       - ORACLE_CONN=skmishra/skmishra@//host.docker.internal:1521/FREEPDB1
+      - LITELLM_URL=http://litellm:4000
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      litellm:
+        condition: service_started
+    restart: unless-stopped
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-dummy}
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
     restart: unless-stopped
 
 volumes:

@@ -1,0 +1,52 @@
+model_list:
+  # Anthropic (pass-through)
+  - model_name: sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-4-5-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: opus
+    litellm_params:
+      model: anthropic/claude-opus-4-0-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: haiku
+    litellm_params:
+      model: anthropic/claude-haiku-4-5-20251001
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # Together AI
+  - model_name: together_ai/meta-llama/Llama-3.3-70B-Instruct-Turbo
+    litellm_params:
+      model: together_ai/meta-llama/Llama-3.3-70B-Instruct-Turbo
+      api_key: os.environ/TOGETHER_API_KEY
+  - model_name: together_ai/mistralai/Mistral-7B-Instruct-v0.3
+    litellm_params:
+      model: together_ai/mistralai/Mistral-7B-Instruct-v0.3
+      api_key: os.environ/TOGETHER_API_KEY
+  - model_name: together_ai/deepseek-ai/DeepSeek-V3
+    litellm_params:
+      model: together_ai/deepseek-ai/DeepSeek-V3
+      api_key: os.environ/TOGETHER_API_KEY
+  - model_name: together_ai/Qwen/Qwen2.5-72B-Instruct-Turbo
+    litellm_params:
+      model: together_ai/Qwen/Qwen2.5-72B-Instruct-Turbo
+      api_key: os.environ/TOGETHER_API_KEY
+
+  # OpenAI
+  - model_name: openai/gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: openai/gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  # Ollama (local, if running)
+  - model_name: ollama/llama3.3
+    litellm_params:
+      model: ollama/llama3.3
+      api_base: http://host.docker.internal:11434
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false

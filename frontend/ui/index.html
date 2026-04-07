@@ -78,6 +78,10 @@
     .collapsible-content.collapsed { display: none; }
     .sub-section { margin-top: 6px; }
     .sub-section h4 { font-size: 11px; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; margin-bottom: 4px; padding-left: 4px; }
+    .model-select { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px 8px; color: #c9d1d9; font-size: 12px; outline: none; margin-bottom: 4px; cursor: pointer; }
+    .model-select:focus { border-color: #1f6feb; }
+    .model-select option { background: #0d1117; color: #c9d1d9; }
+    .model-active { font-size: 11px; color: #238636; padding: 2px 4px; }
     .ws-editor { width: 100%; min-height: 300px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px; color: #c9d1d9; font-family: monospace; font-size: 13px; line-height: 1.5; resize: vertical; outline: none; }
     .ws-editor:focus { border-color: #1f6feb; }
     .ws-save-note { font-size: 12px; color: #8b949e; }
@@ -112,6 +116,12 @@
       <div class="sidebar-section">
         <h3>Sessions</h3>
         <div id="sessionsList"></div>
+      </div>
+      <div class="sidebar-section">
+        <h3 class="collapsible" onclick="toggleSection('modelSection')"><span class="chevron open" id="modelSectionChevron">&#9654;</span> Model</h3>
+        <div id="modelSection" class="collapsible-content">
+          <div id="modelSelector" style="font-size:12px;padding:4px"></div>
+        </div>
       </div>
       <div class="sidebar-section">
         <h3 class="collapsible" onclick="toggleSection('wsFiles')"><span class="chevron open" id="wsFilesChevron">&#9654;</span> Workspace</h3>
@@ -448,11 +458,57 @@
         }
       }
 
+      // Model selector
+      const modelsRes = await send('config.getModels');
+      if (modelsRes.ok) {
+        const { current, available } = modelsRes.payload;
+        let html = '<select class="model-select" id="providerSelect" onchange="onProviderChange()">';
+        for (const p of available) {
+          html += `<option value="${p.provider}" ${p.provider === current.provider ? 'selected' : ''}>${p.provider}</option>`;
+        }
+        html += '</select>';
+        html += '<select class="model-select" id="modelSelect" onchange="onModelChange()">';
+        const currentProvider = available.find(p => p.provider === current.provider);
+        if (currentProvider) {
+          for (const m of currentProvider.models) {
+            html += `<option value="${m}" ${m === current.model ? 'selected' : ''}>${m}</option>`;
+          }
+        }
+        html += '</select>';
+        html += `<div class="model-active">Active: ${current.provider}/${current.model}</div>`;
+        document.getElementById('modelSelector').innerHTML = html;
+        window._availableModels = available;
+      }
+
       // Config
       const cfgRes = await send('config.get');
       if (cfgRes.ok) {
         const cfg = cfgRes.payload.config;
-        configInfo.innerHTML = `Model: ${cfg?.agent?.model ?? 'default'}<br>Port: ${cfg?.gateway?.port ?? 18789}`;
+        configInfo.innerHTML = `Port: ${cfg?.gateway?.port ?? 18789}<br>Auth: ${cfg?.gateway?.authMode ?? 'token'}`;
+      }
+    }
+
+    // Model selection handlers
+    function onProviderChange() {
+      const provider = document.getElementById('providerSelect').value;
+      const modelSelect = document.getElementById('modelSelect');
+      const providerData = (window._availableModels || []).find(p => p.provider === provider);
+      if (providerData) {
+        modelSelect.innerHTML = providerData.models.map(m =>
+          `<option value="${m}">${m}</option>`
+        ).join('');
+        onModelChange();
+      }
+    }
+
+    async function onModelChange() {
+      const provider = document.getElementById('providerSelect').value;
+      const model = document.getElementById('modelSelect').value;
+      const res = await send('config.setModel', { provider, model });
+      if (res.ok) {
+        const activeEl = document.querySelector('.model-active');
+        if (activeEl) activeEl.textContent = `Active: ${provider}/${model}`;
+        addMessage('system', `Model switched to ${provider}/${model}`);
       }
     }
 

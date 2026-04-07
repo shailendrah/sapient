@@ -27,11 +27,20 @@ export interface GatewayConfig {
   token?: string;
 }
 
+/** Supported LLM providers. */
+export type LLMProvider = "anthropic" | "together" | "openai" | "ollama" | "custom";
+
 /** Agent (Claude Agent SDK) configuration. */
 export interface AgentConfig {
+  /** LLM provider. Default: "anthropic". Non-anthropic providers are routed through LiteLLM. */
+  provider?: LLMProvider;
   /** Anthropic API key. Supports $secret:name or ${ENV_VAR} syntax. */
   apiKey?: string;
-  /** Model to use. Default: "sonnet". Accepts aliases: "sonnet", "opus", "haiku", or full model IDs. */
+  /** API key for non-Anthropic providers (Together, OpenAI, etc.). */
+  providerApiKey?: string;
+  /** Custom base URL for the provider (only used when provider is "custom"). */
+  providerBaseUrl?: string;
+  /** Model to use. Default: "sonnet". For non-Anthropic providers, use the full model ID (e.g., "meta-llama/Llama-3.3-70B-Instruct-Turbo"). */
   model?: string;
   /** System prompt override. */
   systemPrompt?: string;

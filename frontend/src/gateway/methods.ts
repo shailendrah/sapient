@@ -236,6 +236,41 @@ export function createMethods(ctx: GatewayContext): Map<string, RequestHandler> 
     return { ok: true };
   });
 
+  methods.set("config.setModel", async (_client, params) => {
+    const { provider, model, providerApiKey } = params as {
+      provider?: string;
+      model: string;
+      providerApiKey?: string;
+    };
+    ctx.config.agent = {
+      ...ctx.config.agent,
+      provider: (provider as any) ?? "anthropic",
+      model,
+      providerApiKey,
+    };
+    return { ok: true, provider: ctx.config.agent.provider, model };
+  });
+
+  methods.set("config.getModels", async () => {
+    return {
+      current: {
+        provider: ctx.config.agent?.provider ?? "anthropic",
+        model: ctx.config.agent?.model ?? "sonnet",
+      },
+      available: [
+        { provider: "anthropic", models: ["sonnet", "opus", "haiku"] },
+        { provider: "together", models: [
+          "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+          "mistralai/Mistral-7B-Instruct-v0.3",
+          "deepseek-ai/DeepSeek-V3",
+          "Qwen/Qwen2.5-72B-Instruct-Turbo",
+        ]},
+        { provider: "openai", models: ["gpt-4o", "gpt-4o-mini"] },
+        { provider: "ollama", models: ["llama3.3"] },
+      ],
+    };
+  });
+
   // ── Pairing ───────────────────────────────────────────────────────
 
   methods.set("pairing.list", async (_client, params) => {

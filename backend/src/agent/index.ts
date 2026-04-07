@@ -77,6 +77,49 @@ function buildAllowedTools(config: AgentConfig): string[] {
   return tools;
 }
 
+const LITELLM_URL = process.env.LITELLM_URL ?? "http://localhost:4000";
+
+/**
+ * Build environment overrides for the Claude Agent SDK process.
+ * When using non-Anthropic providers, routes through LiteLLM proxy.
+ */
+function buildSdkEnv(config: AgentConfig): Record<string, string | undefined> | undefined {
+  const provider = config.provider ?? "anthropic";
+  if (provider === "anthropic") return undefined; // use defaults
+
+  // Route through LiteLLM
+  return {
+    ANTHROPIC_BASE_URL: LITELLM_URL,
+    ANTHROPIC_API_KEY: config.providerApiKey ?? config.apiKey ?? process.env.ANTHROPIC_API_KEY ?? "dummy-key",
+  };
+}
+
+/**
+ * Resolve model name for the provider.
+ * LiteLLM uses provider-prefixed model names.
+ */
+function resolveModelForProvider(config: AgentConfig): string {
+  const provider = config.provider ?? "anthropic";
+  const model = config.model ?? DEFAULT_MODEL;
+
+  if (provider === "anthropic") return model;
+
+  // LiteLLM model format: provider/model-name
+  const prefixMap: Record<string, string> = {
+    together: "together_ai",
+    openai: "openai",
+    ollama: "ollama",
+  };
+
+  const prefix = prefixMap[provider];
+  if (prefix && !model.includes("/")) {
+    return `${prefix}/${model}`;
+  }
+
+  // "custom" or already prefixed
+  return model;
+}
+
 let seqCounter = 0;
 
 function makeEvent(
@@ -126,11 +169,13 @@ export async function runAgent(
       }
     }
 
-    // Create the query
+    // Create the query — route through LiteLLM for non-Anthropic providers
+    const sdkEnv = buildSdkEnv(config);
     const agentQuery = sdkQuery({
       prompt: message.text,
       options: {
-        model: config.model ?? DEFAULT_MODEL,
+        model: resolveModelForProvider(config),
+        env: sdkEnv ? { ...process.env, ...sdkEnv } : undefined,
         systemPrompt: config.systemPrompt,
         maxTurns: 50,
         permissionMode: config.permissionMode ?? "acceptEdits",
