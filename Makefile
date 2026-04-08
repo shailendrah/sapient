@@ -1,4 +1,4 @@
-.PHONY: help build start_sapient stop_sapient pair_sapient logs status clean
+.PHONY: help start_sapient stop_sapient restart_sapient pair_sapient logs status clean
 
 COMPOSE := docker compose
 CONTAINER := sapient
@@ -7,13 +7,14 @@ CLI := node frontend/dist/src/cli/index.js
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build the Docker image
-	$(COMPOSE) build
-
-start_sapient: ## Start Sapient (detached). Use 'make logs' to tail output.
+start_sapient: ## Build and start Sapient (detached). Use 'make logs' to tail output.
 	$(COMPOSE) up --build -d
 	@echo ""
 	@echo "Sapient started. Run 'make logs' to see output, 'make status' to check."
+
+restart_sapient: ## Restart without rebuilding
+	$(COMPOSE) restart
+	@echo "Restarted."
 
 stop_sapient: ## Stop the running Sapient container
 	$(COMPOSE) down
