@@ -112,11 +112,11 @@ function resolveModelForProvider(config: AgentConfig): string {
   };
 
   const prefix = prefixMap[provider];
-  if (prefix && !model.includes("/")) {
+  if (prefix && !model.startsWith(`${prefix}/`)) {
     return `${prefix}/${model}`;
   }
 
-  // "custom" or already prefixed
+  // "custom" or already correctly prefixed
   return model;
 }
 
