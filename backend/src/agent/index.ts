@@ -61,6 +61,7 @@ function buildAllowedTools(config: AgentConfig): string[] {
       oracle: ["run-sql", "run-sqlcl", "schema-information", "connect", "disconnect", "list-connections"],
       embed: ["embed", "embed_batch", "embed_info"],
       stock: ["stock_quote", "stock_history", "stock_indicators", "stock_signal", "stock_stats", "stock_screener", "options_expirations", "options_chain", "options_strategy_analyzer", "options_sigma_strikes"],
+      slack: ["slack_send", "slack_edit", "slack_delete", "slack_read", "slack_thread", "slack_react", "slack_reactions_list", "slack_pin", "slack_unpin", "slack_pins_list", "slack_search", "slack_channels_list", "slack_channel_info", "slack_users_list", "slack_user_info", "slack_file_upload", "slack_set_topic"],
     };
 
     for (const serverName of Object.keys(config.mcpServers)) {

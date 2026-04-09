@@ -1,0 +1,11 @@
+{
+  "name": "@sapient/mcp-slack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@slack/web-api": "^7.0.0"
+  }
+}
