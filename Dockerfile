@@ -1,8 +1,11 @@
 FROM node:20-slim
 
-# Install Java (required for SQLcl) and pnpm
+# Install Java (required for SQLcl), Python (required for stock-trading MCP), and pnpm
 RUN apt-get update && apt-get install -y --no-install-recommends \
     default-jre-headless \
+    python3 \
+    python3-pip \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 RUN corepack enable && corepack prepare pnpm@9 --activate
@@ -30,6 +33,8 @@ COPY workspace-defaults/ workspace-defaults/
 COPY mcp-servers/ mcp-servers/
 RUN cd mcp-servers/embed && npm install --omit=dev
 RUN cd mcp-servers/oracle-proxy && npm install --omit=dev
+RUN pip3 install --no-cache-dir --break-system-packages \
+    mcp yfinance pandas numpy scipy
 
 # Install SQLcl (Oracle SQL command-line with MCP server support)
 COPY sqlcl/ /usr/local/sqlcl/

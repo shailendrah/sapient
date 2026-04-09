@@ -40,37 +40,36 @@ export interface AgentRunResult {
   error?: string;
 }
 
-/** Built-in tools that should always be allowed. */
-const BUILTIN_TOOLS = [
-  "Read", "Write", "Edit", "Bash", "Grep", "Glob",
-  "WebSearch", "WebFetch", "Agent", "ToolSearch",
-];
-
 /**
- * Build the full list of allowed tools including MCP tool names.
- * MCP tools are namespaced as mcp__<serverName>__<toolName>.
- * Since we don't know the tool names upfront, we allow all tools
- * from configured MCP servers by pattern.
+ * The SDK's acceptEdits permission mode auto-allows read tools
+ * but may prompt for write tools and MCP tools. Since we're running
+ * as a server with no interactive terminal, we allow all tools
+ * explicitly. The SDK passes these as --allowedTools to Claude Code.
  */
 function buildAllowedTools(config: AgentConfig): string[] {
-  const tools = [...BUILTIN_TOOLS];
+  // Start with all built-in tools
+  const tools = [
+    "Read", "Write", "Edit", "Bash", "Grep", "Glob",
+    "WebSearch", "WebFetch", "Agent", "ToolSearch",
+    "NotebookEdit",
+  ];
 
-  // Add wildcard patterns for MCP server tools
+  // Add MCP tool names for configured servers.
+  // Claude Code names them mcp__<serverName>__<toolName>.
   if (config.mcpServers) {
+    const mcpTools: Record<string, string[]> = {
+      oracle: ["run-sql", "run-sqlcl", "schema-information", "connect", "disconnect", "list-connections"],
+      embed: ["embed", "embed_batch", "embed_info"],
+      stock: ["stock_quote", "stock_history", "stock_indicators", "stock_signal", "stock_stats", "stock_screener"],
+    };
+
     for (const serverName of Object.keys(config.mcpServers)) {
-      // The SDK uses mcp__<name>__<tool> naming
-      // Add common Oracle MCP tools explicitly
-      tools.push(
-        `mcp__${serverName}__run-sql`,
-        `mcp__${serverName}__run-sqlcl`,
-        `mcp__${serverName}__schema-information`,
-        `mcp__${serverName}__connect`,
-        `mcp__${serverName}__disconnect`,
-        `mcp__${serverName}__list-connections`,
-        `mcp__${serverName}__embed`,
-        `mcp__${serverName}__embed_batch`,
-        `mcp__${serverName}__embed_info`,
-      );
+      const knownTools = mcpTools[serverName];
+      if (knownTools) {
+        for (const t of knownTools) {
+          tools.push(`mcp__${serverName}__${t}`);
+        }
+      }
     }
   }
 
