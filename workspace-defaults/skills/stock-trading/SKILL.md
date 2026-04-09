@@ -96,6 +96,36 @@ Confidence scales with MACD spread magnitude and volume strength.
 - 0.5-1.0: Above average
 - < 0.5: Below average (weak conviction)
 
+### `options_expirations`
+List available options expiration dates.
+```
+options_expirations(ticker="SPY")
+```
+
+### `options_chain`
+Get live options chain with bid/ask/IV. Filter by type, volume, and distance from money.
+```
+options_chain(ticker="SPY", expiration="2026-04-17", option_type="puts", near_money=10, min_volume=100)
+```
+
+### `options_sigma_strikes`
+Calculate strike prices at 1σ, 1.5σ, 2σ levels for a given DTE.
+```
+options_sigma_strikes(ticker="SPY", dte=7, sigma_levels=[1.0, 1.5, 2.0])
+```
+
+### `options_strategy_analyzer`
+Analyze a multi-leg options strategy: P&L curve, break-evens, max profit/loss.
+```
+options_strategy_analyzer(
+  ticker="SPY", expiration="2026-04-17",
+  legs=[
+    {"type": "put", "strike": 540, "action": "sell", "premium": 2.50},
+    {"type": "put", "strike": 535, "action": "buy", "premium": 1.30}
+  ]
+)
+```
+
 ## Example Prompts
 
 - "What's the current price and signal for AAPL?"

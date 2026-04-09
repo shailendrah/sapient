@@ -60,7 +60,7 @@ function buildAllowedTools(config: AgentConfig): string[] {
     const mcpTools: Record<string, string[]> = {
       oracle: ["run-sql", "run-sqlcl", "schema-information", "connect", "disconnect", "list-connections"],
       embed: ["embed", "embed_batch", "embed_info"],
-      stock: ["stock_quote", "stock_history", "stock_indicators", "stock_signal", "stock_stats", "stock_screener"],
+      stock: ["stock_quote", "stock_history", "stock_indicators", "stock_signal", "stock_stats", "stock_screener", "options_expirations", "options_chain", "options_strategy_analyzer", "options_sigma_strikes"],
     };
 
     for (const serverName of Object.keys(config.mcpServers)) {

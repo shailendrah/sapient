@@ -475,6 +475,310 @@ def stock_screener(
         return json.dumps({"error": str(e)})
 
 
+# ── Options Tools ──────────────────────────────────────────────────────
+
+@mcp.tool()
+def options_expirations(ticker: str) -> str:
+    """
+    Get available options expiration dates for a ticker.
+
+    Args:
+        ticker: Stock symbol (e.g., "SPY", "AAPL")
+    """
+    try:
+        t = yf.Ticker(ticker)
+        expirations = list(t.options)
+        return json.dumps({
+            "ticker": ticker,
+            "expirations": expirations,
+            "count": len(expirations),
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+def _format_chain(df: pd.DataFrame) -> list[dict]:
+    """Format an options chain DataFrame into clean records."""
+    records = []
+    for _, row in df.iterrows():
+        rec = {
+            "strike": float(row["strike"]),
+            "lastPrice": float(row["lastPrice"]),
+            "bid": float(row["bid"]),
+            "ask": float(row["ask"]),
+            "volume": int(row["volume"]) if pd.notna(row["volume"]) else 0,
+            "openInterest": int(row["openInterest"]) if pd.notna(row["openInterest"]) else 0,
+            "impliedVolatility": round(float(row["impliedVolatility"]), 4) if pd.notna(row["impliedVolatility"]) else None,
+            "inTheMoney": bool(row["inTheMoney"]),
+        }
+        if "change" in row and pd.notna(row["change"]):
+            rec["change"] = round(float(row["change"]), 4)
+        if "percentChange" in row and pd.notna(row["percentChange"]):
+            rec["percentChange"] = round(float(row["percentChange"]), 4)
+        records.append(rec)
+    return records
+
+
+@mcp.tool()
+def options_chain(
+    ticker: str,
+    expiration: Optional[str] = None,
+    option_type: str = "both",
+    min_volume: int = 0,
+    near_money: Optional[int] = None,
+) -> str:
+    """
+    Get options chain (calls and/or puts) for a ticker and expiration.
+
+    Args:
+        ticker: Stock symbol
+        expiration: Expiration date (YYYY-MM-DD). If omitted, uses the nearest expiration.
+        option_type: "calls", "puts", or "both"
+        min_volume: Filter out options with volume below this threshold
+        near_money: If set, only return N strikes above and below current price
+    """
+    try:
+        t = yf.Ticker(ticker)
+        expirations = t.options
+        if not expirations:
+            return json.dumps({"error": f"No options available for {ticker}"})
+
+        exp = expiration if expiration and expiration in expirations else expirations[0]
+        chain = t.option_chain(exp)
+        current_price = float(t.history(period="1d")["Close"].iloc[-1])
+
+        result = {
+            "ticker": ticker,
+            "expiration": exp,
+            "underlyingPrice": round(current_price, 4),
+        }
+
+        if option_type in ("calls", "both"):
+            calls = chain.calls
+            if min_volume > 0:
+                calls = calls[calls["volume"] >= min_volume]
+            if near_money:
+                calls = calls[
+                    (calls["strike"] >= current_price - near_money)
+                    & (calls["strike"] <= current_price + near_money)
+                ]
+            result["calls"] = _format_chain(calls)
+            result["callCount"] = len(result["calls"])
+
+        if option_type in ("puts", "both"):
+            puts = chain.puts
+            if min_volume > 0:
+                puts = puts[puts["volume"] >= min_volume]
+            if near_money:
+                puts = puts[
+                    (puts["strike"] >= current_price - near_money)
+                    & (puts["strike"] <= current_price + near_money)
+                ]
+            result["puts"] = _format_chain(puts)
+            result["putCount"] = len(result["puts"])
+
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+@mcp.tool()
+def options_strategy_analyzer(
+    ticker: str,
+    expiration: str,
+    legs: list[dict],
+) -> str:
+    """
+    Analyze a multi-leg options strategy. Calculates P&L at expiration,
+    break-even points, max profit, max loss, and Greeks summary.
+
+    Args:
+        ticker: Stock symbol
+        expiration: Expiration date (YYYY-MM-DD)
+        legs: List of leg definitions, each with:
+            - type: "call" or "put"
+            - strike: Strike price
+            - action: "buy" or "sell"
+            - quantity: Number of contracts (default 1)
+            - premium: Premium per share (if known, otherwise fetched)
+
+    Example legs:
+        [
+            {"type": "put", "strike": 540, "action": "sell", "premium": 2.50},
+            {"type": "put", "strike": 535, "action": "buy", "premium": 1.30},
+            {"type": "call", "strike": 570, "action": "sell", "premium": 2.10},
+            {"type": "call", "strike": 575, "action": "buy", "premium": 0.90}
+        ]
+    """
+    try:
+        t = yf.Ticker(ticker)
+        current_price = float(t.history(period="1d")["Close"].iloc[-1])
+
+        # Fetch chain for premium lookup if needed
+        chain = None
+        try:
+            chain = t.option_chain(expiration)
+        except Exception:
+            pass
+
+        # Process legs
+        processed_legs = []
+        total_credit = 0.0
+
+        for leg in legs:
+            strike = float(leg["strike"])
+            opt_type = leg["type"].lower()
+            action = leg["action"].lower()
+            qty = int(leg.get("quantity", 1))
+            premium = leg.get("premium")
+
+            # Try to fetch premium from chain if not provided
+            if premium is None and chain is not None:
+                chain_df = chain.calls if opt_type == "call" else chain.puts
+                match = chain_df[chain_df["strike"] == strike]
+                if not match.empty:
+                    mid = (float(match.iloc[0]["bid"]) + float(match.iloc[0]["ask"])) / 2
+                    premium = round(mid, 2)
+                else:
+                    premium = 0.0
+
+            multiplier = 1 if action == "sell" else -1
+            total_credit += premium * multiplier * qty
+
+            processed_legs.append({
+                "type": opt_type,
+                "strike": strike,
+                "action": action,
+                "quantity": qty,
+                "premium": premium,
+            })
+
+        # Calculate P&L across a range of prices
+        all_strikes = [leg["strike"] for leg in processed_legs]
+        price_min = min(all_strikes) - 20
+        price_max = max(all_strikes) + 20
+        prices = np.arange(price_min, price_max + 0.5, 0.50)
+
+        pnl_curve = []
+        break_evens = []
+        prev_pnl = None
+
+        for px in prices:
+            pnl = total_credit
+            for leg in processed_legs:
+                if leg["type"] == "call":
+                    intrinsic = max(0, px - leg["strike"])
+                else:
+                    intrinsic = max(0, leg["strike"] - px)
+
+                if leg["action"] == "sell":
+                    pnl -= intrinsic * leg["quantity"]
+                else:
+                    pnl += intrinsic * leg["quantity"]
+
+            pnl_curve.append({"price": round(float(px), 2), "pnl": round(float(pnl), 4)})
+
+            # Detect break-even crossings
+            if prev_pnl is not None and prev_pnl * pnl < 0:
+                break_evens.append(round(float(px), 2))
+            prev_pnl = pnl
+
+        pnl_values = [p["pnl"] for p in pnl_curve]
+        max_profit = max(pnl_values)
+        max_loss = min(pnl_values)
+
+        # Net delta estimate (simple: sum of directional exposure)
+        net_delta = 0.0
+        for leg in processed_legs:
+            d = 0.5  # rough ATM delta
+            if leg["type"] == "call":
+                if leg["strike"] > current_price:
+                    d = max(0.1, 0.5 - (leg["strike"] - current_price) / current_price * 5)
+                else:
+                    d = min(0.9, 0.5 + (current_price - leg["strike"]) / current_price * 5)
+            else:
+                if leg["strike"] < current_price:
+                    d = -max(0.1, 0.5 - (current_price - leg["strike"]) / current_price * 5)
+                else:
+                    d = -min(0.9, 0.5 + (leg["strike"] - current_price) / current_price * 5)
+
+            if leg["action"] == "sell":
+                d = -d
+            net_delta += d * leg["quantity"]
+
+        result = {
+            "ticker": ticker,
+            "underlyingPrice": round(current_price, 4),
+            "expiration": expiration,
+            "legs": processed_legs,
+            "totalCredit": round(total_credit, 4),
+            "maxProfit": round(max_profit, 4),
+            "maxLoss": round(max_loss, 4),
+            "breakEvens": break_evens,
+            "riskRewardRatio": round(abs(max_loss / max_profit), 2) if max_profit != 0 else None,
+            "netDeltaEstimate": round(net_delta, 3),
+            "profitableRange": {
+                "low": min([p["price"] for p in pnl_curve if p["pnl"] > 0], default=None),
+                "high": max([p["price"] for p in pnl_curve if p["pnl"] > 0], default=None),
+            },
+            "pnlAtCurrentPrice": round(float(total_credit), 4),
+            "pnlCurveSample": [p for p in pnl_curve if p["price"] % 5 < 0.5],
+        }
+
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e), "traceback": traceback.format_exc()})
+
+
+@mcp.tool()
+def options_sigma_strikes(
+    ticker: str,
+    dte: int = 7,
+    sigma_levels: list[float] = [1.0, 1.5, 2.0],
+) -> str:
+    """
+    Calculate strike prices at various sigma levels for a given ticker and DTE.
+    Uses historical volatility to compute expected move.
+
+    Args:
+        ticker: Stock symbol
+        dte: Days to expiration
+        sigma_levels: List of sigma multipliers (e.g., [1.0, 1.5, 2.0])
+    """
+    try:
+        df = fetch_ohlcv(ticker, period="3mo", interval="1d")
+        close = df["Close"]
+        current_price = float(close.iloc[-1])
+
+        # Annualized volatility from log returns
+        log_returns = np.log(close / close.shift(1)).dropna()
+        daily_vol = float(log_returns.std())
+        annual_vol = daily_vol * np.sqrt(252)
+        period_vol = daily_vol * np.sqrt(dte)
+
+        strikes = {}
+        for sigma in sigma_levels:
+            move = current_price * period_vol * sigma
+            strikes[f"{sigma}σ"] = {
+                "callStrike": round(current_price + move, 2),
+                "putStrike": round(current_price - move, 2),
+                "expectedMove": round(move, 2),
+                "expectedMovePct": round(move / current_price * 100, 2),
+            }
+
+        return json.dumps({
+            "ticker": ticker,
+            "currentPrice": round(current_price, 4),
+            "dte": dte,
+            "annualizedVolatility": round(annual_vol, 4),
+            "dailyVolatility": round(daily_vol, 6),
+            "periodVolatility": round(period_vol, 6),
+            "strikes": strikes,
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 # ── Entry Point ────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

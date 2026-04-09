@@ -26,8 +26,11 @@ Design, analyze, adjust, and manage options strategies. This skill covers multi-
 ## Data Sources
 
 - **Underlying price and volatility:** use `stock_quote` and `stock_indicators` MCP tools
-- **Options premiums, strikes, expiry:** provided by the user in their prompt
-- **No options chain data feed** — work with what the user provides
+- **Options chain (live):** use `options_chain` to get real bid/ask/IV for any expiration
+- **Sigma strikes:** use `options_sigma_strikes` to calculate strike levels for any DTE
+- **Expirations:** use `options_expirations` to list available expiry dates
+- **Strategy P&L:** use `options_strategy_analyzer` to compute P&L curve, break-evens, max profit/loss
+- **User-provided data:** premiums and positions from the user's prompt supplement the live data
 
 ## Trading Style (Default Approach)
 
@@ -274,34 +277,40 @@ Scan a range of underlying prices (e.g., ±3σ) to build the P&L curve.
 
 When a user says "Design me a weekly iron condor on SPY":
 
-1. Get current SPY price and volatility:
+1. Get sigma strikes and available expirations:
    ```
-   stock_quote(ticker="SPY")
-   stock_stats(ticker="SPY", period="1mo", interval="1d")
-   ```
-
-2. Calculate σ for the period (e.g., 7 DTE):
-   ```
-   σ_7d = annualized_vol / √252 × √7
+   options_sigma_strikes(ticker="SPY", dte=7, sigma_levels=[1.0, 1.5, 2.0])
+   options_expirations(ticker="SPY")
    ```
 
-3. Set strikes:
+2. Pick the nearest weekly expiration and 1.5σ strikes from the result.
+
+3. Get live premiums for the chosen strikes:
    ```
-   Short put  = round_to_strike(price × (1 − 1.5 × σ_7d))
-   Short call = round_to_strike(price × (1 + 1.5 × σ_7d))
-   Wing width = $5 (SPY) or appropriate for the stock
-   Long put   = short_put − wing_width
-   Long call  = short_call + wing_width
+   options_chain(ticker="SPY", expiration="2026-04-17", option_type="both", near_money=30)
    ```
 
-4. Present the structure with:
-   - All four legs and strikes
-   - Expected credit range (user confirms with their broker)
-   - Max profit, max loss, break-even levels
-   - Probability of profit estimate
+4. Build the strategy with actual bid/ask prices and analyze:
+   ```
+   options_strategy_analyzer(
+     ticker="SPY",
+     expiration="2026-04-17",
+     legs=[
+       {"type": "put", "strike": 653, "action": "sell"},
+       {"type": "put", "strike": 648, "action": "buy"},
+       {"type": "call", "strike": 705, "action": "sell"},
+       {"type": "call", "strike": 710, "action": "buy"}
+     ]
+   )
+   ```
+
+5. Present the complete analysis:
+   - All four legs with live premiums
+   - Total credit, max profit, max loss
+   - Break-even levels and profitable range
+   - Risk/reward ratio
+   - P&L curve at key price points
    - Adjustment plan: when to roll, when to close
-
-5. Ask the user for the actual premium they can get, then refine the analysis.
 
 ## Disclaimer
 
