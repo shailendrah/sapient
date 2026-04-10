@@ -39,6 +39,7 @@ const WORKSPACE_FILES = [
   "SOUL.md",
   "TOOLS.md",
   "AGENTS.md",
+  "KNOWLEDGE.md",
   "IDENTITY.md",
   "USER.md",
 ];

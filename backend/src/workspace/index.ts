@@ -22,6 +22,7 @@ export interface WorkspaceFiles {
   agents?: string;
   identity?: string;
   user?: string;
+  knowledge?: string;
 }
 
 const WORKSPACE_FILES: Record<keyof WorkspaceFiles, string> = {
@@ -30,6 +31,7 @@ const WORKSPACE_FILES: Record<keyof WorkspaceFiles, string> = {
   agents: "AGENTS.md",
   identity: "IDENTITY.md",
   user: "USER.md",
+  knowledge: "KNOWLEDGE.md",
 };
 
 /** Read all workspace coaching files from a directory. */
@@ -65,6 +67,10 @@ export function buildSystemPrompt(
 
   if (workspace.tools) {
     parts.push(`\n## Tool Usage Guidelines\n${workspace.tools}`);
+  }
+
+  if (workspace.knowledge) {
+    parts.push(`\n## Knowledge Base\n${workspace.knowledge}`);
   }
 
   // Append skills inventory
