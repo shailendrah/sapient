@@ -31,7 +31,7 @@ COPY workspace-defaults/ workspace-defaults/
 
 # Copy MCP servers and install their dependencies
 COPY mcp-servers/ mcp-servers/
-RUN cd mcp-servers/embed && npm install --omit=dev
+RUN cd mcp-servers/embed && npm install --omit=dev --platform=linux --arch=x64
 RUN cd mcp-servers/oracle-proxy && npm install --omit=dev
 RUN cd mcp-servers/slack && npm install --omit=dev
 RUN pip3 install --no-cache-dir --break-system-packages \
