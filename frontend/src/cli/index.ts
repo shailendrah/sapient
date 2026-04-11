@@ -136,6 +136,7 @@ program
     const sessions = new Map<string, Session>();
     const abortControllers = new Map<string, AbortController>();
     const runSessions = new Map<string, string>();
+    const sdkSessions = new Map<string, string>();
 
     // Create gateway context
     const ctx: GatewayContext = {
@@ -144,6 +145,7 @@ program
       sessions,
       abortControllers,
       runSessions,
+      sdkSessions,
       broadcastToSession: gateway.broadcastToSession,
       workspaceDir,
     };

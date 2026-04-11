@@ -31,6 +31,8 @@ export interface AgentOptions {
   abortController?: AbortController;
   /** Canonical run ID. If omitted, one is generated. */
   runId?: string;
+  /** SDK session ID to resume. Enables conversation continuity. */
+  resumeSessionId?: string;
 }
 
 /** Result of an agent run. */
@@ -38,6 +40,8 @@ export interface AgentRunResult {
   runId: string;
   finalText?: string;
   error?: string;
+  /** SDK session ID for resuming this conversation. */
+  sessionId?: string;
 }
 
 /**
@@ -147,8 +151,9 @@ export async function runAgent(
   sessionKey: string,
   options: AgentOptions,
 ): Promise<AgentRunResult> {
-  const { config, onStreamEvent, onApprovalRequest, abortController } = options;
+  const { config, onStreamEvent, onApprovalRequest, abortController, resumeSessionId } = options;
   const runId = options.runId ?? `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  let sdkSessionId: string | undefined;
 
   onStreamEvent(
     makeEvent("agent.start", runId, sessionKey, { type: "agent.start" }),
@@ -183,6 +188,7 @@ export async function runAgent(
         agents: Object.keys(agents).length > 0 ? agents : undefined,
         mcpServers: config.mcpServers,
         abortController,
+        resume: resumeSessionId,
 
         // Human-in-the-loop: intercept tool approvals
         canUseTool: onApprovalRequest
@@ -204,6 +210,10 @@ export async function runAgent(
     for await (const msg of agentQuery) {
       switch (msg.type) {
         case "assistant": {
+          // Capture session ID for conversation continuity
+          if ((msg as any).session_id) {
+            sdkSessionId = (msg as any).session_id;
+          }
           // Extract text from the assistant message content blocks
           const content = msg.message?.content;
           if (Array.isArray(content)) {
@@ -319,7 +329,7 @@ export async function runAgent(
       }),
     );
 
-    return { runId, finalText };
+    return { runId, finalText, sessionId: sdkSessionId };
   } catch (err) {
     const errorMsg = err instanceof Error
       ? `${err.message}${err.stack ? `\n${err.stack}` : ""}`

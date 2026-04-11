@@ -31,6 +31,8 @@ export interface GatewayContext {
   abortControllers: Map<string, AbortController>;
   /** Maps runId → sessionKey for session-scoped abort. */
   runSessions: Map<string, string>;
+  /** Maps sessionKey → SDK session ID for conversation continuity. */
+  sdkSessions: Map<string, string>;
   broadcastToSession: (sessionKey: string, event: StreamEvent) => void;
   workspaceDir?: string;
 }
@@ -104,15 +106,25 @@ export function createMethods(ctx: GatewayContext): Map<string, RequestHandler> 
     // Subscribe this client to the session
     client.subscribedSessions.add(key);
 
+    // Resume existing SDK session if available for this session key
+    const resumeSessionId = ctx.sdkSessions.get(key);
+
     // Run agent asynchronously
     runAgent(inbound, key, {
       runId,
       config: ctx.config.agent ?? { model: DEFAULT_MODEL },
       abortController,
+      resumeSessionId,
       onStreamEvent(event: StreamEvent) {
         ctx.broadcastToSession(key, event);
       },
     })
+      .then((result) => {
+        // Store SDK session ID for conversation continuity
+        if (result.sessionId) {
+          ctx.sdkSessions.set(key, result.sessionId);
+        }
+      })
       .catch((err) => {
         console.error(`[chat.send] Agent error: ${err}`);
       })
